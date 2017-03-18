@@ -103,6 +103,7 @@ void	nulluser()
 local process	startup(void)
 {
 #ifdef IP_STUFF
+	kprintf("Starting now \n");
 	uint32	ipaddr;			/* Computer's IP address	*/
 	char	str[128];		/* String used to format output	*/
 

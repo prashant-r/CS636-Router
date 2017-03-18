@@ -1,4 +1,5 @@
 /* xinu.h - include all system header files */
+#define IP_STUFF 3
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdint.h>

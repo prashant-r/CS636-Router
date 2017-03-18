@@ -63,10 +63,6 @@ extern uint16_t uip_len;
 
 #define SIZE_ETHERNET 14
 uint8_t *uip_next_hdr;
-
-uint8_t uip_ext_len = 0;
-uint16_t uip_len =0;
-
 unsigned char * uip_buf;
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 #define UIP_LLADDR_LEN 6
@@ -339,7 +335,6 @@ struct uip_udp_hdr {
 #define UIP_EXT_HDR_OPT_BUF            ((struct uip_ext_hdr_opt *)&uip_buf[uip_l2_l3_hdr_len + uip_ext_opt_offset])
 #define UIP_EXT_HDR_OPT_PADN_BUF  ((struct uip_ext_hdr_opt_padn *)&uip_buf[uip_l2_l3_hdr_len + uip_ext_opt_offset])
 
-#endif /* UIP_H_ */
 extern uint16_t chksum(uint16_t sum, const uint8_t *data, uint16_t len);
 extern uint16_t upper_layer_chksum(uint8_t proto);
 extern uint16_t uip_htons(uint16_t val);
@@ -402,3 +397,5 @@ create_llao(uint8_t *llao, uint8_t type);
 
 void echo_request_input(void);
 void *memmove(void *v_dst, const void *v_src, int32_t c);
+
+#endif /* UIP_H_ */

@@ -102,7 +102,7 @@ uid32	udp_register (
 	mask = disable();
 
 	/* See if request already registered */
-
+	
 	for (slot=0; slot<UDP_SLOTS; slot++) {
 		udptr = &udptab[slot];
 		if (udptr->udstate == UDP_FREE) {

@@ -1,6 +1,15 @@
 /* in file addargs.c */
 extern	status	addargs(pid32, int32, int32[], int32,char *, void *);
 
+
+extern	void	arp_init(void);
+extern	status	arp_resolve(uint32, byte[]);
+extern	void	arp_in(struct arppacket *);
+extern	int32	arp_alloc(void);
+extern	void	arp_ntoh(struct arppacket *);
+extern	void	arp_hton(struct arppacket *);
+
+
 /* in file ascdate.c */
 extern	status	ascdate(uint32, char *);
 
@@ -149,6 +158,33 @@ extern	devcall	ioerr(void);
 
 /* in file ionull.c */
 extern	devcall	ionull(void);
+
+
+
+extern	void	icmp_init(void);
+extern	void	icmp_in(struct netpacket *);
+extern	int32	icmp_register(uint32);
+extern	int32	icmp_recv(int32, char *, int32, uint32);
+extern	status	icmp_send(uint32, uint16, uint16, uint16, char *, int32);
+extern	struct	netpacket *icmp_mkpkt(uint32, uint16, uint16, uint16,
+				      char *, int32);
+extern	status	icmp_release(int32);
+extern	uint16	icmp_cksum(char *, int32);
+extern	void	icmp_hton(struct netpacket *);
+extern	void	icmp_ntoh(struct netpacket *);
+
+
+extern	void	ip_in(struct netpacket *);
+extern	status	ip_send(struct netpacket *);
+extern	void	ip_local(struct netpacket *);
+extern	status	ip_out(struct netpacket *);
+extern	int32	ip_route(uint32);
+extern	uint16	ipcksum(struct netpacket *);
+extern	void	ip_ntoh(struct netpacket *);
+extern	void	ip_hton(struct netpacket *);
+extern	process	ipout(void);
+extern	status	ip_enqueue(struct netpacket *);
+
 
 
 /* in file ipv6.c */

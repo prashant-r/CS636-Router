@@ -61,19 +61,19 @@ shellcmd xsh_sp(int nargs, char *args[])
 	/*	source		= Interface's MAC unicast address	*/
 
 	memset((char *)&pkt, 0, 1500);
-	strcpy((char *)&pkt.net_payload, " Please ignore this packet");
-	pkt.net_type = htons(0x0885);
-	memcpy(pkt.net_dst, if_tab[iface].if_macbcast, ETH_ADDR_LEN);
-	memcpy(pkt.net_src, if_tab[iface].if_macucast, ETH_ADDR_LEN);
+	//strcpy((char *)&pkt.net_payload, " Please ignore this packet");
+	pkt.net_ethtype = htons(0x0885);
+	memcpy(pkt.net_ethdst, if_tab[iface].if_macbcast, ETH_ADDR_LEN);
+	memcpy(pkt.net_ethsrc, if_tab[iface].if_macucast, ETH_ADDR_LEN);
 
 	printf("Sending packet:\n");
-	printf("   type        %04x\n", ntohs(pkt.net_type));
+	printf("   type        %04x\n", ntohs(pkt.net_ethtype));
 	printf("   source      %02x:%02x:%02x:%02x:%02x:%02x\n", 
-		0xff&pkt.net_src[0], 0xff&pkt.net_src[1], 0xff&pkt.net_src[2],
-		0xff&pkt.net_src[3], 0xff&pkt.net_src[4], 0xff&pkt.net_src[5]);
+		0xff&pkt.net_ethsrc[0], 0xff&pkt.net_ethsrc[1], 0xff&pkt.net_ethsrc[2],
+		0xff&pkt.net_ethsrc[3], 0xff&pkt.net_ethsrc[4], 0xff&pkt.net_ethsrc[5]);
 	printf("   destination %02x:%02x:%02x:%02x:%02x:%02x\n", 
-		0xff&pkt.net_dst[0], 0xff&pkt.net_dst[1], 0xff&pkt.net_dst[2],
-		0xff&pkt.net_dst[3], 0xff&pkt.net_dst[4], 0xff&pkt.net_dst[5]);
+		0xff&pkt.net_ethdst[0], 0xff&pkt.net_ethdst[1], 0xff&pkt.net_ethdst[2],
+		0xff&pkt.net_ethdst[3], 0xff&pkt.net_ethdst[4], 0xff&pkt.net_ethdst[5]);
 
 	write(ETHER0, (char *)&pkt, 1500);
 

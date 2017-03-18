@@ -35,12 +35,12 @@ devcall	ethread	(
 
 		/* See if destination address is our unicast address */
 
-		if(!memcmp(pktptr->net_dst, ethptr->devAddress, 6)) {
+		if(!memcmp(pktptr->net_ethdst, ethptr->devAddress, 6)) {
 			valid_addr = TRUE;
 
 		/* See if destination address is the broadcast address */
 
-		} else if(!memcmp(pktptr->net_dst, ethptr->bcastAddress, 6)) {
+		} else if(!memcmp(pktptr->net_ethdst, ethptr->bcastAddress, 6)) {
             		valid_addr = TRUE;
 
 		/* For multicast addresses, see if we should accept */
@@ -48,7 +48,7 @@ devcall	ethread	(
     		} else {
 			valid_addr = FALSE;
 			for(i = 0; i < (ethptr->ed_mcc); i++) {
-				if(memcmp(pktptr->net_dst,
+				if(memcmp(pktptr->net_ethdst,
 					ethptr->ed_mca[i], 6) == 0){
 					valid_addr = TRUE;
 					break;

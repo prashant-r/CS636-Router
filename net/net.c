@@ -6,6 +6,8 @@
 
 #include "mactable.incl"
 
+struct	network	NetData;
+
 uint64	netportseed;			/* Used to generate a random	*/
 					/*  port number for UDP or TCP	*/
 
@@ -50,10 +52,24 @@ void	net_init (void)
 	char	pname[20];		/* String used for process name	*/
 
 	/* Initialize the random port seed */
+	memset((char *)&NetData, NULLCH, sizeof(struct network));
 
+	/* Obtain the Ethernet MAC address */
+
+	control(ETHER0, ETH_CTRL_GET_MAC, (int32)NetData.ethucast, 0);
+
+	memset((char *)NetData.ethbcast, 0xFF, ETH_ADDR_LEN);
 	netportseed = getticks();
 
+	arp_init();
 
+	/* Initialize UDP */
+
+	udp_init();
+
+	/* Initialize ICMP */
+
+	icmp_init();
 	/* Allocate the global buffer pool shared by all interfaces */
 
 	nbufs = NIFACES * IF_QUEUESIZE + 1;
@@ -313,7 +329,7 @@ process	netin (
  	}
  	
 	while(1) {
-
+		
 		/* Obtain next packet arriving on an interface */
 
 		wait(ifptr->if_sem);
@@ -334,26 +350,28 @@ process	netin (
  			//kprintf("RECEIVED PACKET\n");
 		/* Demultiplex on Ethernet type */
 
-		switch (pkt->net_type) {
+		switch (pkt->net_ethtype) {
 
-		    case ETH_ARP:			/* Handle ARP	*/
+		    case ETH_ARP:	
+		    	arp_in((struct arppacket *)pkt);		/* Handle ARP	*/
 				freebuf((char *)pkt);
 				continue;
 
-		    case ETH_IP:			/* Handle IPv4	*/
+		    case ETH_IP:
+		    	ip_in(pkt);			/* Handle IPv4	*/
 				freebuf((char *)pkt);
 				continue;
 	
 		    case ETH_IPv6:		
-		    	ipv6_in((char *) pkt);
-		    	memcpy(&BUF->dest, &(pkt->net_src), UIP_LLADDR_LEN);
-      			memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
-      			BUF->type = UIP_HTONS(UIP_ETHTYPE_IPV6);
-      			uip_len += sizeof(struct uip_eth_hdr);
-      			PRINTF("UIP len is %d \n", uip_len);
-      			pdump(uip_buf);
-      			write(ETHER0, uip_buf, uip_len);
-  				freebuf((char *)pkt);
+		    // 	ipv6_in((char *) pkt);
+		    // 	memcpy(&BUF->dest, &(pkt->net_ethsrc), UIP_LLADDR_LEN);
+      // 			memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
+      // 			BUF->type = UIP_HTONS(UIP_ETHTYPE_IPV6);
+      // 			uip_len += sizeof(struct uip_eth_hdr);
+      // 			PRINTF("UIP len is %d \n", uip_len);
+      // 			pdump(uip_buf);
+      // 			write(ETHER0, uip_buf, uip_len);
+  				// freebuf((char *)pkt);
 				continue;
 
 		    default:	/* Ignore all other incoming packets	*/
@@ -386,9 +404,9 @@ process	rawin (void) {
 
 		/* If source is an othernet, restore the multicast bit */
 
-		if ( (pkt->net_src[1] & 0xff) == 0x80 &&
-			(pkt->net_src[2] & 0xff) == 0x0a ) {
-			pkt->net_src[0] |= 0x01;
+		if ( (pkt->net_ethsrc[1] & 0xff) == 0x80 &&
+			(pkt->net_ethsrc[2] & 0xff) == 0x0a ) {
+			pkt->net_ethsrc[0] |= 0x01;
 		}
 
 		if (packetdump == 2) {
@@ -402,9 +420,9 @@ process	rawin (void) {
 		    if (ifptr->if_state != IF_UP) {
 			continue;
 		    }
-		    if ( (memcmp(ifptr->if_macucast, pkt->net_dst,
+		    if ( (memcmp(ifptr->if_macucast, pkt->net_ethdst,
 				OTH_ADDR_LEN) == 0) ||
-			 (memcmp(ifptr->if_macbcast, pkt->net_dst,
+			 (memcmp(ifptr->if_macbcast, pkt->net_ethdst,
 				OTH_ADDR_LEN) == 0)) {
 
 			/* packet goes to this interface */
@@ -485,7 +503,7 @@ void 	eth_hton(
 	  struct netpacket *pktptr
 	)
 {
-	pktptr->net_type = htons(pktptr->net_type);
+	pktptr->net_ethtype = htons(pktptr->net_ethtype);
 }
 
 
@@ -497,7 +515,7 @@ void 	eth_ntoh(
 	  struct netpacket *pktptr
 	)
 {
-	pktptr->net_type = ntohs(pktptr->net_type);
+	pktptr->net_ethtype = ntohs(pktptr->net_ethtype);
 }
 
 /*------------------------------------------------------------------------

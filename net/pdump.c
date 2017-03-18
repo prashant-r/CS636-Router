@@ -17,30 +17,30 @@ void	pdump(struct  netpacket *pptr)
 		kprintf("on %s ", if_tab[pptr->net_iface].if_name);
 	}
 	kprintf("%02x:%02x:%02x:%02x:%02x:%02x >",
-			pptr->net_src[0],
-			pptr->net_src[1],
-			pptr->net_src[2],
-			pptr->net_src[3],
-			pptr->net_src[4],
-			pptr->net_src[5]
+			pptr->net_ethsrc[0],
+			pptr->net_ethsrc[1],
+			pptr->net_ethsrc[2],
+			pptr->net_ethsrc[3],
+			pptr->net_ethsrc[4],
+			pptr->net_ethsrc[5]
 	       );
 	kprintf(" %02x:%02x:%02x:%02x:%02x:%02x, ",
-			pptr->net_dst[0],
-			pptr->net_dst[1],
-			pptr->net_dst[2],
-			pptr->net_dst[3],
-			pptr->net_dst[4],
-			pptr->net_dst[5]
+			pptr->net_ethdst[0],
+			pptr->net_ethdst[1],
+			pptr->net_ethdst[2],
+			pptr->net_ethdst[3],
+			pptr->net_ethdst[4],
+			pptr->net_ethdst[5]
 	       );
 
 	kprintf("ethertype ");
 
 #ifdef IP_STUFF
-	switch (ntohs(pptr->net_type)) {
+	switch (ntohs(pptr->net_ethtype)) {
 
 		case 0x0806:
 			kprintf("ARP (0x%04x), length %d: ",
-					ntohs(pptr->net_type),
+					ntohs(pptr->net_ethtype),
 					sizeof(struct arppacket));
 			aptr = (struct arppacket *)pptr;
 			
@@ -161,7 +161,7 @@ void	pdump(struct  netpacket *pptr)
 			break;
 	}
 #else
-	kprintf("0x%04x\n", ntohs(pptr->net_type));
+	kprintf("0x%04x\n", ntohs(pptr->net_ethtype));
 #endif
 
 
@@ -180,30 +180,30 @@ void	pdumph(struct  netpacket *pptr)
 #endif
 
 	kprintf("%02x:%02x:%02x:%02x:%02x:%02x >",
-			pptr->net_src[0],
-			pptr->net_src[1],
-			pptr->net_src[2],
-			pptr->net_src[3],
-			pptr->net_src[4],
-			pptr->net_src[5]
+			pptr->net_ethsrc[0],
+			pptr->net_ethsrc[1],
+			pptr->net_ethsrc[2],
+			pptr->net_ethsrc[3],
+			pptr->net_ethsrc[4],
+			pptr->net_ethsrc[5]
 	       );
 	kprintf(" %02x:%02x:%02x:%02x:%02x:%02x, ",
-			pptr->net_dst[0],
-			pptr->net_dst[1],
-			pptr->net_dst[2],
-			pptr->net_dst[3],
-			pptr->net_dst[4],
-			pptr->net_dst[5]
+			pptr->net_ethdst[0],
+			pptr->net_ethdst[1],
+			pptr->net_ethdst[2],
+			pptr->net_ethdst[3],
+			pptr->net_ethdst[4],
+			pptr->net_ethdst[5]
 	       );
 
 	kprintf("ethertype ");
 
 #ifdef IP_STUFF
-	switch (pptr->net_type) {
+	switch (pptr->net_ethtype) {
 
 		case 0x0806:
 			kprintf("ARP (0x%04x), length %d: ",
-					pptr->net_type,
+					pptr->net_ethtype,
 					sizeof(struct arppacket));
 			aptr = (struct arppacket *)pptr;
 			
@@ -247,7 +247,7 @@ void	pdumph(struct  netpacket *pptr)
 
 		case 0x0800:
 			kprintf("IPv4 (0x%04x), length %d: ",
-					pptr->net_type,
+					pptr->net_ethtype,
 					pptr->net_iplen + ETH_HDR_LEN);
 			
 			kprintf("(");
@@ -327,7 +327,7 @@ void	pdumph(struct  netpacket *pptr)
 			break;
 	}
 #else
-	kprintf(" 0x%04x\n", pptr->net_type);
+	kprintf(" 0x%04x\n", pptr->net_ethtype);
 #endif
 
 	return;
