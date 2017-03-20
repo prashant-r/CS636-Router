@@ -5,6 +5,7 @@
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
+typedef int int32_t;
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((uint8_t *)addr)[0], ((uint8_t *)addr)[1], ((uint8_t *)addr)[2], ((uint8_t *)addr)[3], ((uint8_t *)addr)[4], ((uint8_t *)addr)[5], ((uint8_t *)addr)[6], ((uint8_t *)addr)[7], ((uint8_t *)addr)[8], ((uint8_t *)addr)[9], ((uint8_t *)addr)[10], ((uint8_t *)addr)[11], ((uint8_t *)addr)[12], ((uint8_t *)addr)[13], ((uint8_t *)addr)[14], ((uint8_t *)addr)[15])
@@ -21,7 +22,7 @@ typedef unsigned int uint32_t;
 #define S32_F "d"
 #define X32_F "x"
 #define NETSTACK_CONF_WITH_IPV6 1
-#define UIP_CONF_IPV6_CHECKS 0
+#define UIP_CONF_IPV6_CHECKS 1
 #define UIP_CONF_ROUTER 1
 
 #define UIP_IPH_LEN    40
@@ -121,7 +122,6 @@ typedef uip_ip6addr_t uip_ipaddr_t;
 #else /* NETSTACK_CONF_WITH_IPV6 */
 typedef uip_ip4addr_t uip_ipaddr_t;
 #endif /* NETSTACK_CONF_WITH_IPV6 */
-static uip_ipaddr_t tmp_ipaddr;
 /* The TCP and IP headers. */
 struct uip_tcpip_hdr {
 #if NETSTACK_CONF_WITH_IPV6
@@ -398,9 +398,7 @@ void echo_reply();
 #define UIP_ND6_RA_FLAG_ONLINK          0x80
 #define UIP_ND6_RA_FLAG_AUTONOMOUS      0x40
 
-void
-create_llao(uint8_t *llao, uint8_t type);
-void ns_input(char *packet);
+void ns_input();
 void echo_request(char *packet);
 
 
@@ -446,7 +444,6 @@ struct icmp_echo_hdr {
   uint16_t seqno;
 };
 
-
 struct uip_ip_hdr {
 #if BYTE_ORDER == LITTLE_ENDIAN
   uint8_t tclass1:4, v:4;
@@ -469,5 +466,100 @@ void  ip_hton();
 
 void ip_debug_print(void);
 
+
+// Neighbor Advertisement
+
+
+/**
+ * \brief A neighbor solicitation constant part
+ *
+ * Possible option is: SLLAO
+ */
+typedef struct uip_nd6_ns {
+  uint32_t reserved;
+  uip_ipaddr_t tgtipaddr;
+} uip_nd6_ns;
+
+/**
+ * \brief A neighbor advertisement constant part.
+ *
+ * Possible option is: TLLAO
+ */
+typedef struct uip_nd6_na {
+  uint8_t flagsreserved;
+  uint8_t reserved[3];
+  uip_ipaddr_t tgtipaddr;
+} uip_nd6_na;
+
+/**
+ * \brief A router solicitation  constant part
+ *
+ * Possible option is: SLLAO
+ */
+typedef struct uip_nd6_rs {
+  uint32_t reserved;
+} uip_nd6_rs;
+
+/**
+ * \brief A router advertisement constant part
+ *
+ * Possible options are: SLLAO, MTU, Prefix Information
+ */
+typedef struct uip_nd6_ra {
+  uint8_t cur_ttl;
+  uint8_t flags_reserved;
+  uint16_t router_lifetime;
+  uint32_t reachable_time;
+  uint32_t retrans_timer;
+} uip_nd6_ra;
+
+
+#define UIP_ND6_HOP_LIMIT               255
+
+#define UIP_ND6_NA_LEN                  20
+#define UIP_ND6_NS_LEN                  20
+#define UIP_ND6_RA_LEN                  12
+#define UIP_ND6_RS_LEN                  4
+
+#define UIP_ND6_OPT_LLAO_LEN           8
+
+/**@{  Pointers to messages just after icmp header */
+#define UIP_ND6_RS_BUF            ((uip_nd6_rs *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_RA_BUF            ((uip_nd6_ra *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_NS_BUF            ((uip_nd6_ns *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_NA_BUF            ((uip_nd6_na *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+
+#define UIP_ND6_OPT_SLLAO               1
+#define UIP_ND6_OPT_TLLAO               2
+#define UIP_ND6_OPT_PREFIX_INFO         3
+#define UIP_ND6_OPT_REDIRECTED_HDR      4
+#define UIP_ND6_OPT_MTU                 5
+#define UIP_ND6_OPT_RDNSS               25
+#define UIP_ND6_OPT_DNSSL               31
+
+
+/** \name ND6 option types */
+/** @{ */
+#define UIP_ND6_OPT_TYPE_OFFSET         0
+#define UIP_ND6_OPT_LEN_OFFSET          1
+#define UIP_ND6_OPT_DATA_OFFSET         2
+
+
 #define IP_HLEN 40
+
+
+void test_send_packet(struct netpacket *pkt);
+
+typedef struct uip_eth_addr {
+  uint8_t addr[6];
+} uip_eth_addr;
+
+struct uip_eth_hdr {
+  struct uip_eth_addr dest;
+  struct uip_eth_addr src;
+  uint16_t type;
+};
+
+void echo_request_input(void);
+
 #endif /* UIP_H_ */

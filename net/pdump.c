@@ -155,7 +155,9 @@ void	pdump(struct  netpacket *pptr)
 			}
 			else
 				break;
-
+		case 0x086DD:
+			ip_debug_print();
+			break;
 		default:
 			kprintf("unknown\n");
 			break;
@@ -321,7 +323,9 @@ void	pdumph(struct  netpacket *pptr)
 			}
 			else
 				break;
-
+		case 0x086DD:
+			ip_debug_print();
+			break;
 		default:
 			kprintf("unknown\n");
 			break;

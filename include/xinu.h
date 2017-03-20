@@ -42,3 +42,4 @@
 #include <stdio.h>
 #include <string.h>
 #include <uip.h>
+#include <icmp6.h>

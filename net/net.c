@@ -282,6 +282,7 @@ void	net_init (void)
 }
 
 
+
 /*------------------------------------------------------------------------
  * netin - repeatedly read and process the next incoming packet
  *------------------------------------------------------------------------
@@ -348,6 +349,8 @@ process	netin (
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
 		    ipv6_in((unsigned char*) pkt);
+		    eth_hton(pkt);
+			test_send_packet(pkt);
 			freebuf((char *)pkt);
 			continue;
 
@@ -355,7 +358,20 @@ process	netin (
 			freebuf((char *)pkt);
 			continue;
 		}
+
+		
 	}
+}
+
+void test_send_packet(struct netpacket *pkt)
+{
+    memcpy(&BUF->dest, &(pkt->net_src), UIP_LLADDR_LEN);
+	memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
+	uip_len += sizeof(struct uip_eth_hdr);
+	PRINTF("UIP len is %d \n", uip_len);
+	pdump(uip_buf);
+	write(ETHER0, uip_buf, uip_len);
+	freebuf((char *)pkt);
 }
 
 
