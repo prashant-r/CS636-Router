@@ -6,6 +6,10 @@
 
 /* net.h */
 
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+
 #define NETSTK		8192 		/* Stack size for network setup */
 #define NETPRIO		500    		/* Network startup priority 	*/
 #define NETBOOTFILE	128		/* Size of the netboot filename	*/
@@ -55,6 +59,19 @@ struct	netpacket	{
 };
 #pragma pack()
 
+#pragma pack(2)
+struct	netpacket_fmt2	{
+	byte	net_dst[ETH_ADDR_LEN];	/* Destination MAC address	*/
+	byte	net_src[ETH_ADDR_LEN];	/* Source MAC address		*/
+	uint16	net_type;		/* Layer 2 type field		*/
+	byte	net_payload[1500];	/* Packet payload		*/
+	uint32	net_ethcrc;		/* Ethernet CRC			*/
+	int16	net_iface;		/* Interface over which the	*/
+					/*   packet arrived (placed	*/
+					/*   after the actual packet so	*/
+					/*   we can pass the packet	*/
+					/*   address directly to write	*/
+};
 
 struct uip_eth_addr {
 	    uint8_t addr[6];
@@ -124,7 +141,7 @@ struct eth_packet        {
 	byte	net_ethdst[ETH_ADDR_LEN];/* Ethernet dest. MAC address	*/
 	byte	net_ethsrc[ETH_ADDR_LEN];/* Ethernet source MAC address	*/
 	uint16	net_ethtype;		/* Ethernet type field		*/
-        byte    net_ethdata[1500-ETH_HDR_LEN];   /* Ethernet payload (1500-above)*/
+    byte    net_ethdata[1500-ETH_HDR_LEN];   /* Ethernet payload (1500-above)*/
 };
 #pragma pack()
 

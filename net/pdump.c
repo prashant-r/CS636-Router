@@ -2,6 +2,11 @@
 
 #include <xinu.h>
 
+#define IP_STUFF 1
+#define IP_DEBUG 1
+
+void
+ip_debug_print(struct ip_hdr * iphdr);
 /*------------------------------------------------------------------------
  * pdump - dump a packet assuming all fields are in network byte order
  *------------------------------------------------------------------------
@@ -84,7 +89,7 @@ void	pdump(struct  netpacket *pptr)
 
 		case 0x0800:
 			kprintf("IPv4 (0x%04x), length %d: ",
-					ntohs(pptr->net_type),
+					ntohs(pptr->net_ethtype),
 					ntohs(pptr->net_iplen) + ETH_HDR_LEN);
 			
 			kprintf("(");
@@ -321,7 +326,8 @@ void	pdumph(struct  netpacket *pptr)
 			}
 			else
 				break;
-
+		case 0x86DD:
+				PRINTF("IPV6 \n");
 		default:
 			kprintf("unknown\n");
 			break;
@@ -331,4 +337,49 @@ void	pdumph(struct  netpacket *pptr)
 #endif
 
 	return;
+}
+
+void
+ip_debug_print(struct ip_hdr * iphdr)
+{
+
+  PRINTF("IP header:\n");
+  PRINTF("+-------------------------------+\n");
+  PRINTF("|%2"S16_F" |  %"X16_F"%"X16_F"  |      %"X16_F"%"X16_F"           | (v, traffic class, flow label)\n",
+        iphdr->v,
+        iphdr->tclass1, iphdr->tclass2,
+        iphdr->flow1, iphdr->flow2);
+  PRINTF("+-------------------------------+\n");
+  PRINTF("|    %5"U16_F"      | %2"U16_F"  |  %2"U16_F"   | (len, nexthdr, hoplim)\n",
+         ntohs(iphdr->len),
+         iphdr->nexthdr,
+         iphdr->hoplim);
+   PRINTF("+-------------------------------+\n");
+   PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
+           (ntohl(iphdr->src.addr[0]) >> 16) & 0xffff,
+           ntohl(iphdr->src.addr[0]) & 0xffff);
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
+           (ntohl(iphdr->src.addr[1]) >> 16) & 0xffff,
+           ntohl(iphdr->src.addr[1]) & 0xffff);
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
+           (ntohl(iphdr->src.addr[2]) >> 16) & 0xffff,
+           ntohl(iphdr->src.addr[2]) & 0xffff);
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
+           (ntohl(iphdr->src.addr[3]) >> 16) & 0xffff,
+           ntohl(iphdr->src.addr[3]) & 0xffff);
+    PRINTF("+-------------------------------+\n");
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
+           (ntohl(iphdr->dest.addr[0]) >> 16) & 0xffff,
+           ntohl(iphdr->dest.addr[0]) & 0xffff);
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
+           (ntohl(iphdr->dest.addr[1]) >> 16) & 0xffff,
+           ntohl(iphdr->dest.addr[1]) & 0xffff);
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
+           (ntohl(iphdr->dest.addr[2]) >> 16) & 0xffff,
+           ntohl(iphdr->dest.addr[2]) & 0xffff);
+    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
+           (ntohl(iphdr->dest.addr[3]) >> 16) & 0xffff,
+           ntohl(iphdr->dest.addr[3]) & 0xffff);
+    PRINTF("+-------------------------------+\n");
+
 }

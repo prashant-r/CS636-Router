@@ -1,8 +1,12 @@
 #ifndef UIP_H_
 #define UIP_H_
 #define DEBUG 1
+
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
 #if DEBUG
-#define PRINTF(...) kprintf(__VA_ARGS__)
+#define PRINTF(...) printf(__VA_ARGS__)
 #define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((uint8_t *)addr)[0], ((uint8_t *)addr)[1], ((uint8_t *)addr)[2], ((uint8_t *)addr)[3], ((uint8_t *)addr)[4], ((uint8_t *)addr)[5], ((uint8_t *)addr)[6], ((uint8_t *)addr)[7], ((uint8_t *)addr)[8], ((uint8_t *)addr)[9], ((uint8_t *)addr)[10], ((uint8_t *)addr)[11], ((uint8_t *)addr)[12], ((uint8_t *)addr)[13], ((uint8_t *)addr)[14], ((uint8_t *)addr)[15])
 #define PRINTLLADDR(lladdr) PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",lladdr->addr[0], lladdr->addr[1], lladdr->addr[2], lladdr->addr[3],lladdr->addr[4], lladdr->addr[5])
 #define PRINTLLADDRDOT(lladdr) PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",lladdr.addr[0], lladdr.addr[1], lladdr.addr[2], lladdr.addr[3],lladdr.addr[4], lladdr.addr[5])
@@ -10,13 +14,18 @@
 #define PRINTF(...)
 #define PRINT6ADDR(addr)
 #endif
+#define U16_F "d"
+#define S16_F "d"
+#define X16_F "x"
+#define U32_F "d"
+#define S32_F "d"
+#define X32_F "x"
 #define NETSTACK_CONF_WITH_IPV6 1
-#if NETSTACK_CONF_WITH_IPV6
-  #define UIP_IPH_LEN    40
-  #define UIP_FRAGH_LEN  8 
-#else /* NETSTACK_CONF_WITH_IPV6 */
-  #define UIP_IPH_LEN    20    /* Size of IP header */
-  #endif /* NETSTACK_CONF_WITH_IPV6 */
+#define UIP_CONF_IPV6_CHECKS 0
+#define UIP_CONF_ROUTER 1
+
+#define UIP_IPH_LEN    40
+#define UIP_FRAGH_LEN  8 
 #define UIP_LLH_LEN     14
 #define UIP_UDPH_LEN    8    /* Size of UDP header */
 #define UIP_TCPH_LEN   20    /* Size of TCP header */
@@ -33,7 +42,7 @@
 #define uip_l2_l3_icmp_hdr_len (UIP_LLH_LEN + UIP_IPH_LEN + uip_ext_len + UIP_ICMPH_LEN)
 #define uip_l3_hdr_len (UIP_IPH_LEN + uip_ext_len)
 #define uip_l3_icmp_hdr_len (UIP_IPH_LEN + uip_ext_len + UIP_ICMPH_LEN)
-
+#define BYTE_ORDER  LITTLE_ENDIAN
 #ifndef UIP_LITTLE_ENDIAN
 #define UIP_LITTLE_ENDIAN  3412
 #endif /* UIP_LITTLE_ENDIAN */
@@ -42,7 +51,7 @@
 #endif /* UIP_BIG_ENDIAN */
 #define UIP_BYTE_ORDER     (UIP_LITTLE_ENDIAN)
 
-#define UIP_ETHTYPE_IPV6 0x86dd
+#define UIP_ETHTYPE_IPV6 0x86DD
 #ifndef UIP_HTONS
 #   if UIP_BYTE_ORDER == UIP_BIG_ENDIAN
 #      define UIP_HTONS(n) (n)
@@ -61,6 +70,9 @@ extern unsigned char *uip_buf;
 extern uint16_t uip_len;
 */
 
+uint8_t uip_ext_len;
+uint16_t uip_len;
+
 #define SIZE_ETHERNET 14
 uint8_t *uip_next_hdr;
 unsigned char * uip_buf;
@@ -73,16 +85,31 @@ typedef struct uip_80211_addr {
 typedef uip_80211_addr uip_lladdr_t;
 uip_lladdr_t uip_lladdr;
 
+uint16_t uip_ipchksum(void);
 
 typedef union uip_ip4addr_t {
   uint8_t  u8[4];                       /* Initializer, must come first. */
   uint16_t u16[2];
+
 } uip_ip4addr_t;
 
 typedef union uip_ip6addr_t {
   uint8_t  u8[16];                      /* Initializer, must come first. */
   uint16_t u16[8];
+  uint32_t addr[4];
 } uip_ip6addr_t;
+
+#define uip_ip6addr(addr, addr0,addr1,addr2,addr3,addr4,addr5,addr6,addr7) do { \
+    (addr)->u16[0] = UIP_HTONS(addr0);                                      \
+    (addr)->u16[1] = UIP_HTONS(addr1);                                      \
+    (addr)->u16[2] = UIP_HTONS(addr2);                                      \
+    (addr)->u16[3] = UIP_HTONS(addr3);                                      \
+    (addr)->u16[4] = UIP_HTONS(addr4);                                      \
+    (addr)->u16[5] = UIP_HTONS(addr5);                                      \
+    (addr)->u16[6] = UIP_HTONS(addr6);                                      \
+    (addr)->u16[7] = UIP_HTONS(addr7);                                      \
+  } while(0)
+
 
 #if NETSTACK_CONF_WITH_IPV6
 typedef uip_ip6addr_t uip_ipaddr_t;
@@ -318,6 +345,7 @@ struct uip_udp_hdr {
   uint16_t udpchksum;
 };
 
+#define UIP_PROTO_HBHO  0
 #define UIP_PROTO_ICMP  1
 #define UIP_PROTO_TCP   6
 #define UIP_PROTO_UDP   17
@@ -335,8 +363,6 @@ struct uip_udp_hdr {
 #define UIP_EXT_HDR_OPT_BUF            ((struct uip_ext_hdr_opt *)&uip_buf[uip_l2_l3_hdr_len + uip_ext_opt_offset])
 #define UIP_EXT_HDR_OPT_PADN_BUF  ((struct uip_ext_hdr_opt_padn *)&uip_buf[uip_l2_l3_hdr_len + uip_ext_opt_offset])
 
-extern uint16_t chksum(uint16_t sum, const uint8_t *data, uint16_t len);
-extern uint16_t upper_layer_chksum(uint8_t proto);
 extern uint16_t uip_htons(uint16_t val);
 extern uint16_t uip_icmp6chksum(void);
 extern void icmp6_input();
@@ -347,7 +373,6 @@ extern void icmp6_input();
 #define UIP_ND6_NS_BUF            ((uip_nd6_ns *)&uip_buf[uip_l2_l3_icmp_hdr_len])
 #define UIP_ND6_NA_BUF            ((uip_nd6_na *)&uip_buf[uip_l2_l3_icmp_hdr_len])
 
-void ns_input(void);
 void echo_reply();
 
 /**
@@ -394,8 +419,69 @@ void echo_reply();
 
 void
 create_llao(uint8_t *llao, uint8_t type);
+void ns_input(char *packet);
+void echo_request(char *packet);
 
-void echo_request_input(void);
-void *memmove(void *v_dst, const void *v_src, int32_t c);
 
+struct pbuf {
+  /** next pbuf in singly linked pbuf chain */
+  struct pbuf *next;
+
+  /** pointer to the actual data in the buffer */
+  void *payload;
+  
+  /**
+   * total length of this buffer and all next buffers in chain
+   * belonging to the same packet.
+   *
+   * For non-queue packet chains this is the invariant:
+   * p->tot_len == p->len + (p->next? p->next->tot_len: 0)
+   */
+  uint16_t tot_len;
+  
+  /** length of this buffer */
+  uint16_t len;  
+
+  /** pbuf_type as u8_t instead of enum to save space */
+  uint8_t /*pbuf_type*/ type;
+
+  /** misc flags */
+  uint8_t flags;
+
+  /**
+   * the reference count always equals the number of pointers
+   * that refer to this pbuf. This can be pointers from an application,
+   * the stack itself, or pbuf->next pointers from a chain.
+   */
+  uint16_t ref;
+  
+};
+
+struct icmp_echo_hdr {
+  uint8_t type;
+  uint8_t icode;
+  uint16_t chksum;
+  uint16_t id;
+  uint16_t seqno;
+};
+
+
+struct ip_hdr {
+#if BYTE_ORDER == LITTLE_ENDIAN
+  uint8_t tclass1:4, v:4;
+  uint8_t flow1:4, tclass2:4;  
+#else
+  uint8_t v:4, tclass1:4;
+  uint8_t tclass2:8, flow1:4;
+#endif
+  uint16_t flow2;
+  uint16_t len;                /* payload length */
+  uint8_t nexthdr;             /* next header */
+  uint8_t hoplim;              /* hop limit (TTL) */
+  uip_ip6addr_t src, dest;          /* source and destination IP addresses */
+};
+
+uint16_t inet_chksum_pbuf(struct pbuf *p);
+
+#define IP_HLEN 40
 #endif /* UIP_H_ */

@@ -61,15 +61,6 @@ void	net_init (void)
 	memset((char *)NetData.ethbcast, 0xFF, ETH_ADDR_LEN);
 	netportseed = getticks();
 
-	arp_init();
-
-	/* Initialize UDP */
-
-	udp_init();
-
-	/* Initialize ICMP */
-
-	icmp_init();
 	/* Allocate the global buffer pool shared by all interfaces */
 
 	nbufs = NIFACES * IF_QUEUESIZE + 1;
@@ -309,9 +300,8 @@ process	netin (
 	/* Do forever: read packet from the network interface and handle*/
 
 	ifptr = &if_tab[iface];
-
+	byte mac_address[6];
 	if( iface == 0 ) {
- 		byte mac_address[6];
  		control(ETHER0, ETH_CTRL_GET_MAC, (int32) &mac_address, 0);
 
  		mac_address[0] = 0x33;
@@ -363,15 +353,8 @@ process	netin (
 				continue;
 	
 		    case ETH_IPv6:		
-		    // 	ipv6_in((char *) pkt);
-		    // 	memcpy(&BUF->dest, &(pkt->net_ethsrc), UIP_LLADDR_LEN);
-      // 			memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
-      // 			BUF->type = UIP_HTONS(UIP_ETHTYPE_IPV6);
-      // 			uip_len += sizeof(struct uip_eth_hdr);
-      // 			PRINTF("UIP len is %d \n", uip_len);
-      // 			pdump(uip_buf);
-      // 			write(ETHER0, uip_buf, uip_len);
-  				// freebuf((char *)pkt);
+		     	ipv6_in((char *) pkt);
+		     	freebuf((char *)pkt);
 				continue;
 
 		    default:	/* Ignore all other incoming packets	*/
