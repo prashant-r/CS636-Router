@@ -62,13 +62,18 @@ typedef unsigned int uint32_t;
 #   endif /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
 #else
 #error "UIP_HTONS already defined!"
-#endif /* UIP_HTONS 
-
-
-
-extern unsigned char *uip_buf;
-extern uint16_t uip_len;
-*/
+#endif
+#ifndef UIP_NTOHS
+#   if UIP_BYTE_ORDER == UIP_BIG_ENDIAN
+#      define UIP_NTOHS(n) (n)
+#      define UIP_NTOHL(n) (n)
+#   else /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
+#      define UIP_NTOHS(n) (uint16_t)((((uint16_t) (n)) << 8) | (((uint16_t) (n)) >> 8))
+#      define UIP_NTOHL(n) (((uint32_t)UIP_HTONS(n) << 16) | UIP_HTONS((uint32_t)(n) >> 16))
+#   endif /* UIP_BYTE_ORDER == UIP_BIG_ENDIAN */
+#else
+#error "UIP_HTONS already defined!"
+#endif
 
 uint8_t uip_ext_len;
 uint16_t uip_len;
@@ -214,30 +219,6 @@ struct uip_udpip_hdr {
     destport;
   uint16_t udplen;
   uint16_t udpchksum;
-};
-
-/* The IP header */
-struct uip_ip_hdr {
-#if NETSTACK_CONF_WITH_IPV6
-  /* IPV6 header */
-  uint8_t vtc;
-  uint8_t tcflow;
-  uint16_t flow;
-  uint8_t len[2];
-  uint8_t proto, ttl;
-  uip_ip6addr_t srcipaddr, destipaddr;
-#else /* NETSTACK_CONF_WITH_IPV6 */
-  /* IPV4 header */
-  uint8_t vhl,
-    tos,
-    len[2],
-    ipid[2],
-    ipoffset[2],
-    ttl,
-    proto;
-  uint16_t ipchksum;
-  uip_ipaddr_t srcipaddr, destipaddr;
-#endif /* NETSTACK_CONF_WITH_IPV6 */
 };
 
 typedef struct uip_ext_hdr {
@@ -466,7 +447,7 @@ struct icmp_echo_hdr {
 };
 
 
-struct ip_hdr {
+struct uip_ip_hdr {
 #if BYTE_ORDER == LITTLE_ENDIAN
   uint8_t tclass1:4, v:4;
   uint8_t flow1:4, tclass2:4;  
@@ -478,10 +459,15 @@ struct ip_hdr {
   uint16_t len;                /* payload length */
   uint8_t nexthdr;             /* next header */
   uint8_t hoplim;              /* hop limit (TTL) */
-  uip_ip6addr_t src, dest;          /* source and destination IP addresses */
+  uip_ip6addr_t srcipaddr, destipaddr;          /* source and destination IP addresses */
 };
 
 uint16_t inet_chksum_pbuf(struct pbuf *p);
+void  ip_ntoh();
+void  ip_hton();
+
+
+void ip_debug_print(void);
 
 #define IP_HLEN 40
 #endif /* UIP_H_ */

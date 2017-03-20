@@ -2,7 +2,7 @@
 
 #define NETSTK		8192 		/* Stack size for network setup */
 #define NETPRIO		500    		/* Network startup priority 	*/
-#define NETBOOTFILE	128		/* Size of the netboot filename	*/
+
 /* Constants used in the networking code */
 
 #define	ETH_ARP     0x0806		/* Ethernet type for ARP	*/
@@ -19,7 +19,6 @@ struct	netpacket	{
 	byte	net_src[ETH_ADDR_LEN];	/* Source MAC address		*/
 	uint16	net_type;		/* Layer 2 type field		*/
 	byte	net_payload[1500];	/* Packet payload		*/
-	uint32	net_ethcrc;		/* Ethernet CRC			*/
 	int16	net_iface;		/* Interface over which the	*/
 					/*   packet arrived (placed	*/
 					/*   after the actual packet so	*/
@@ -77,20 +76,3 @@ extern	int32	ifprime;	/* Primary interface.  For a host, the	*/
 extern	bool8	host;		/* TRUE if this node is running as a	*/
 				/*   host; FALSE if acting as a NAT box	*/
 extern	int32	bingid;		/* User's bing ID			*/
-
-struct	network	{			/* Network information		*/
-	uint32	ipucast;		/* Computer's IP unicast address*/
-	uint32	ipbcast;		/* IP broadcast address		*/
-	uint32	ipmask;			/* IP address mask		*/
-	uint32	ipprefix;		/* IP (network) prefix		*/
-	uint32	iprouter;		/* Default router address	*/
-	uint32	bootserver;		/* Boot server address		*/
-	uint32	dnsserver;		/* DNS server address		*/
-	uint32	ntpserver;		/* NTP (time) server address	*/
-	bool8	ipvalid;		/* nonzero => above are valid	*/
-	byte	ethucast[ETH_ADDR_LEN];	/* Ethernet multicast address	*/
-	byte	ethbcast[ETH_ADDR_LEN];	/* Ethernet broadcast address	*/
-	char	bootfile[NETBOOTFILE];	/* Name of boot file		*/
-};
-
-extern	struct	network NetData;	/* Local Network Interface info	*/

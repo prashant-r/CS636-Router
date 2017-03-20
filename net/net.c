@@ -35,6 +35,11 @@ bpid32	netbufpool;			/* IP of network buffer pool	*/
 
 void	net_init (void)
 {
+	memset((char *)&NetData, NULLCH, sizeof(struct network));
+
+	control(ETHER0, ETH_CTRL_GET_MAC, (int32)NetData.ethucast, 0);
+
+	memset((char *)NetData.ethbcast, 0xFF, ETH_ADDR_LEN);
 	int32	nbufs;			/* Total no of buffers		*/
 	int32	iface;			/* Index into interface table	*/
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
@@ -52,14 +57,9 @@ void	net_init (void)
 	char	pname[20];		/* String used for process name	*/
 
 	/* Initialize the random port seed */
-	memset((char *)&NetData, NULLCH, sizeof(struct network));
 
-	/* Obtain the Ethernet MAC address */
-
-	control(ETHER0, ETH_CTRL_GET_MAC, (int32)NetData.ethucast, 0);
-
-	memset((char *)NetData.ethbcast, 0xFF, ETH_ADDR_LEN);
 	netportseed = getticks();
+
 
 	/* Allocate the global buffer pool shared by all interfaces */
 
@@ -73,8 +73,7 @@ void	net_init (void)
 
 	/* Ask the user for a Bing ID */
 
-	found = TRUE;
-    bingid = 59;
+	found = FALSE;
 	while (!found) {
 		printf("\nEnter a bing ID between 0 and 255: ");
 		nchars = read(CONSOLE, buffer, 5);
@@ -101,8 +100,6 @@ void	net_init (void)
 	/* Ask the user what to run */
 
 	found = FALSE;
-    host = FALSE;
-    ifprime = 0;
 	while (!found) {
 		printf("\nEnter n for nat box or hX for host on interface X: ");
 		nchars = read(CONSOLE, buffer, 30);
@@ -297,9 +294,6 @@ process	netin (
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
 	struct	netpacket *pkt;		/* Ptr to current packet	*/
 
-	/* Do forever: read packet from the network interface and handle*/
-
-	ifptr = &if_tab[iface];
 	byte mac_address[6];
 	if( iface == 0 ) {
  		control(ETHER0, ETH_CTRL_GET_MAC, (int32) &mac_address, 0);
@@ -308,7 +302,7 @@ process	netin (
  		mac_address[1] = 0x33;
  		mac_address[2] = 0xFF;
  
- 		kprintf("> Successfully received Local MAC Address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+ 		kprintf("\n > Successfully received Local MAC Address \n : %02x:%02x:%02x:%02x:%02x:%02x\n",
   							(unsigned char) mac_address[0],
   							(unsigned char) mac_address[1],
   							(unsigned char) mac_address[2],
@@ -317,9 +311,13 @@ process	netin (
   							(unsigned char) mac_address[5]);
  		control(ETHER0, ETH_CTRL_ADD_MCAST, (int32) &mac_address, 0);
  	}
- 	
+
+	/* Do forever: read packet from the network interface and handle*/
+
+	ifptr = &if_tab[iface];
+
 	while(1) {
-		
+
 		/* Obtain next packet arriving on an interface */
 
 		wait(ifptr->if_sem);
@@ -336,30 +334,26 @@ process	netin (
 
 		eth_ntoh(pkt);
 
-		if( iface == 0 )
- 			//kprintf("RECEIVED PACKET\n");
 		/* Demultiplex on Ethernet type */
 
-		switch (pkt->net_ethtype) {
+		switch (pkt->net_type) {
 
-		    case ETH_ARP:	
-		    	arp_in((struct arppacket *)pkt);		/* Handle ARP	*/
-				freebuf((char *)pkt);
-				continue;
+		    case ETH_ARP:			/* Handle ARP	*/
+			freebuf((char *)pkt);
+			continue;
 
-		    case ETH_IP:
-		    	ip_in(pkt);			/* Handle IPv4	*/
-				freebuf((char *)pkt);
-				continue;
+		    case ETH_IP:			/* Handle IPv4	*/
+			freebuf((char *)pkt);
+			continue;
 	
-		    case ETH_IPv6:		
-		     	ipv6_in((char *) pkt);
-		     	freebuf((char *)pkt);
-				continue;
+		    case ETH_IPv6:			/* Handle IPv6	*/
+		    ipv6_in((unsigned char*) pkt);
+			freebuf((char *)pkt);
+			continue;
 
 		    default:	/* Ignore all other incoming packets	*/
-				freebuf((char *)pkt);
-				continue;
+			freebuf((char *)pkt);
+			continue;
 		}
 	}
 }
@@ -387,9 +381,9 @@ process	rawin (void) {
 
 		/* If source is an othernet, restore the multicast bit */
 
-		if ( (pkt->net_ethsrc[1] & 0xff) == 0x80 &&
-			(pkt->net_ethsrc[2] & 0xff) == 0x0a ) {
-			pkt->net_ethsrc[0] |= 0x01;
+		if ( (pkt->net_src[1] & 0xff) == 0x80 &&
+			(pkt->net_src[2] & 0xff) == 0x0a ) {
+			pkt->net_src[0] |= 0x01;
 		}
 
 		if (packetdump == 2) {
@@ -403,9 +397,9 @@ process	rawin (void) {
 		    if (ifptr->if_state != IF_UP) {
 			continue;
 		    }
-		    if ( (memcmp(ifptr->if_macucast, pkt->net_ethdst,
+		    if ( (memcmp(ifptr->if_macucast, pkt->net_dst,
 				OTH_ADDR_LEN) == 0) ||
-			 (memcmp(ifptr->if_macbcast, pkt->net_ethdst,
+			 (memcmp(ifptr->if_macbcast, pkt->net_dst,
 				OTH_ADDR_LEN) == 0)) {
 
 			/* packet goes to this interface */
@@ -442,7 +436,7 @@ process	rawin (void) {
 
 			/* Not an Othernet - send to Ethernet */
 
-		    ifptr = &if_tab[iface];
+		        ifptr = &if_tab[iface];
 			if (ifptr->if_state != IF_UP) {
 				continue;
 			}
@@ -486,7 +480,7 @@ void 	eth_hton(
 	  struct netpacket *pktptr
 	)
 {
-	pktptr->net_ethtype = htons(pktptr->net_ethtype);
+	pktptr->net_type = htons(pktptr->net_type);
 }
 
 
@@ -498,7 +492,7 @@ void 	eth_ntoh(
 	  struct netpacket *pktptr
 	)
 {
-	pktptr->net_ethtype = ntohs(pktptr->net_ethtype);
+	pktptr->net_type = ntohs(pktptr->net_type);
 }
 
 /*------------------------------------------------------------------------

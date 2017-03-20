@@ -2,11 +2,6 @@
 
 #include <xinu.h>
 
-#define IP_STUFF 1
-#define IP_DEBUG 1
-
-void
-ip_debug_print(struct ip_hdr * iphdr);
 /*------------------------------------------------------------------------
  * pdump - dump a packet assuming all fields are in network byte order
  *------------------------------------------------------------------------
@@ -22,30 +17,30 @@ void	pdump(struct  netpacket *pptr)
 		kprintf("on %s ", if_tab[pptr->net_iface].if_name);
 	}
 	kprintf("%02x:%02x:%02x:%02x:%02x:%02x >",
-			pptr->net_ethsrc[0],
-			pptr->net_ethsrc[1],
-			pptr->net_ethsrc[2],
-			pptr->net_ethsrc[3],
-			pptr->net_ethsrc[4],
-			pptr->net_ethsrc[5]
+			pptr->net_src[0],
+			pptr->net_src[1],
+			pptr->net_src[2],
+			pptr->net_src[3],
+			pptr->net_src[4],
+			pptr->net_src[5]
 	       );
 	kprintf(" %02x:%02x:%02x:%02x:%02x:%02x, ",
-			pptr->net_ethdst[0],
-			pptr->net_ethdst[1],
-			pptr->net_ethdst[2],
-			pptr->net_ethdst[3],
-			pptr->net_ethdst[4],
-			pptr->net_ethdst[5]
+			pptr->net_dst[0],
+			pptr->net_dst[1],
+			pptr->net_dst[2],
+			pptr->net_dst[3],
+			pptr->net_dst[4],
+			pptr->net_dst[5]
 	       );
 
 	kprintf("ethertype ");
 
 #ifdef IP_STUFF
-	switch (ntohs(pptr->net_ethtype)) {
+	switch (ntohs(pptr->net_type)) {
 
 		case 0x0806:
 			kprintf("ARP (0x%04x), length %d: ",
-					ntohs(pptr->net_ethtype),
+					ntohs(pptr->net_type),
 					sizeof(struct arppacket));
 			aptr = (struct arppacket *)pptr;
 			
@@ -89,7 +84,7 @@ void	pdump(struct  netpacket *pptr)
 
 		case 0x0800:
 			kprintf("IPv4 (0x%04x), length %d: ",
-					ntohs(pptr->net_ethtype),
+					ntohs(pptr->net_type),
 					ntohs(pptr->net_iplen) + ETH_HDR_LEN);
 			
 			kprintf("(");
@@ -166,7 +161,7 @@ void	pdump(struct  netpacket *pptr)
 			break;
 	}
 #else
-	kprintf("0x%04x\n", ntohs(pptr->net_ethtype));
+	kprintf("0x%04x\n", ntohs(pptr->net_type));
 #endif
 
 
@@ -185,30 +180,30 @@ void	pdumph(struct  netpacket *pptr)
 #endif
 
 	kprintf("%02x:%02x:%02x:%02x:%02x:%02x >",
-			pptr->net_ethsrc[0],
-			pptr->net_ethsrc[1],
-			pptr->net_ethsrc[2],
-			pptr->net_ethsrc[3],
-			pptr->net_ethsrc[4],
-			pptr->net_ethsrc[5]
+			pptr->net_src[0],
+			pptr->net_src[1],
+			pptr->net_src[2],
+			pptr->net_src[3],
+			pptr->net_src[4],
+			pptr->net_src[5]
 	       );
 	kprintf(" %02x:%02x:%02x:%02x:%02x:%02x, ",
-			pptr->net_ethdst[0],
-			pptr->net_ethdst[1],
-			pptr->net_ethdst[2],
-			pptr->net_ethdst[3],
-			pptr->net_ethdst[4],
-			pptr->net_ethdst[5]
+			pptr->net_dst[0],
+			pptr->net_dst[1],
+			pptr->net_dst[2],
+			pptr->net_dst[3],
+			pptr->net_dst[4],
+			pptr->net_dst[5]
 	       );
 
 	kprintf("ethertype ");
 
 #ifdef IP_STUFF
-	switch (pptr->net_ethtype) {
+	switch (pptr->net_type) {
 
 		case 0x0806:
 			kprintf("ARP (0x%04x), length %d: ",
-					pptr->net_ethtype,
+					pptr->net_type,
 					sizeof(struct arppacket));
 			aptr = (struct arppacket *)pptr;
 			
@@ -252,7 +247,7 @@ void	pdumph(struct  netpacket *pptr)
 
 		case 0x0800:
 			kprintf("IPv4 (0x%04x), length %d: ",
-					pptr->net_ethtype,
+					pptr->net_type,
 					pptr->net_iplen + ETH_HDR_LEN);
 			
 			kprintf("(");
@@ -326,60 +321,38 @@ void	pdumph(struct  netpacket *pptr)
 			}
 			else
 				break;
-		case 0x86DD:
-				PRINTF("IPV6 \n");
+
 		default:
 			kprintf("unknown\n");
 			break;
 	}
 #else
-	kprintf(" 0x%04x\n", pptr->net_ethtype);
+	kprintf(" 0x%04x\n", pptr->net_type);
 #endif
 
 	return;
 }
 
 void
-ip_debug_print(struct ip_hdr * iphdr)
+ip_debug_print()
 {
-
   PRINTF("IP header:\n");
   PRINTF("+-------------------------------+\n");
   PRINTF("|%2"S16_F" |  %"X16_F"%"X16_F"  |      %"X16_F"%"X16_F"           | (v, traffic class, flow label)\n",
-        iphdr->v,
-        iphdr->tclass1, iphdr->tclass2,
-        iphdr->flow1, iphdr->flow2);
+        UIP_IP_BUF->v,
+        UIP_IP_BUF->tclass1, UIP_IP_BUF->tclass2,
+        UIP_IP_BUF->flow1, UIP_IP_BUF->flow2);
   PRINTF("+-------------------------------+\n");
   PRINTF("|    %5"U16_F"      | %2"U16_F"  |  %2"U16_F"   | (len, nexthdr, hoplim)\n",
-         ntohs(iphdr->len),
-         iphdr->nexthdr,
-         iphdr->hoplim);
-   PRINTF("+-------------------------------+\n");
-   PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
-           (ntohl(iphdr->src.addr[0]) >> 16) & 0xffff,
-           ntohl(iphdr->src.addr[0]) & 0xffff);
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
-           (ntohl(iphdr->src.addr[1]) >> 16) & 0xffff,
-           ntohl(iphdr->src.addr[1]) & 0xffff);
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
-           (ntohl(iphdr->src.addr[2]) >> 16) & 0xffff,
-           ntohl(iphdr->src.addr[2]) & 0xffff);
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (src)\n",
-           (ntohl(iphdr->src.addr[3]) >> 16) & 0xffff,
-           ntohl(iphdr->src.addr[3]) & 0xffff);
-    PRINTF("+-------------------------------+\n");
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
-           (ntohl(iphdr->dest.addr[0]) >> 16) & 0xffff,
-           ntohl(iphdr->dest.addr[0]) & 0xffff);
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
-           (ntohl(iphdr->dest.addr[1]) >> 16) & 0xffff,
-           ntohl(iphdr->dest.addr[1]) & 0xffff);
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
-           (ntohl(iphdr->dest.addr[2]) >> 16) & 0xffff,
-           ntohl(iphdr->dest.addr[2]) & 0xffff);
-    PRINTF("|       %4"X32_F"      |       %4"X32_F"     | (dest)\n",
-           (ntohl(iphdr->dest.addr[3]) >> 16) & 0xffff,
-           ntohl(iphdr->dest.addr[3]) & 0xffff);
-    PRINTF("+-------------------------------+\n");
+        (UIP_IP_BUF->len),
+        UIP_IP_BUF->nexthdr,
+        UIP_IP_BUF->hoplim);
+  PRINTF("+-------------------------------+\n");
+  PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
+  PRINTF("   | ( src ) ");
+  PRINTF("\n+---------------------------------+\n");
+  PRINT6ADDR(&UIP_IP_BUF->destipaddr);
+  PRINTF("   | ( dest ) ");
+  PRINTF("\n+-------------------------------+\n");
 
 }

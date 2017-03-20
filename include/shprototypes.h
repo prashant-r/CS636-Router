@@ -52,9 +52,6 @@ extern	shellcmd  xsh_nvram	(int32, char *[]);
 /* in file xsh_ping.c */
 extern	shellcmd  xsh_ping	(int32, char *[]);
 
-/* in file xsh_ping6.c */
-extern	shellcmd  xsh_ping6	(int32, char *[]);
-
 /* in file xsh_pdump.c */
 extern	shellcmd  xsh_pdump	(int32, char *[]);
 

@@ -3,6 +3,7 @@
 #include <xinu.h>
 #include <stdio.h>
 #include <string.h>
+
 /*------------------------------------------------------------------------
  * xsh_ping - shell command to ping a remote host
  *------------------------------------------------------------------------
@@ -110,7 +111,6 @@ shellcmd xsh_ping(int nargs, char *args[])
 			sizeof(buf), retval);
 		}
 	fprintf(stderr, "host %s is alive\n", args[1]);
-	printf("Ping success\n");
 #endif
 	return 0;
 }
