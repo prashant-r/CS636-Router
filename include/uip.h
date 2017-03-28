@@ -331,6 +331,7 @@ struct uip_udp_hdr {
 #define UIP_PROTO_TCP   6
 #define UIP_PROTO_UDP   17
 #define UIP_PROTO_ICMP6 58
+#define UIP_PROTO_FRAG  44
 
 #define UIP_IP_BUF                          ((struct uip_ip_hdr *)&uip_buf[UIP_LLH_LEN])
 #define UIP_ICMP_BUF                      ((struct uip_icmp_hdr *)&uip_buf[uip_l2_l3_hdr_len])
@@ -560,6 +561,8 @@ struct uip_eth_hdr {
   uint16_t type;
 };
 
+
+static uip_ipaddr_t tmp_ipaddr;
 void echo_request_input(void);
 
 #endif /* UIP_H_ */

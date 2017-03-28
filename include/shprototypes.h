@@ -37,6 +37,9 @@ extern	shellcmd  xsh_kill	(int32, char *[]);
 /* in file xsh_led.c */
 extern	shellcmd  xsh_led	(int32, char *[]);
 
+/* in file xsh_libtest.c */
+extern  shellcmd xsh_libtest(int nargs, char *args[]);
+
 /* in file xsh_memdump.c */
 extern	shellcmd  xsh_memdump	(int32, char *[]);
 
@@ -51,6 +54,9 @@ extern	shellcmd  xsh_nvram	(int32, char *[]);
 
 /* in file xsh_ping.c */
 extern	shellcmd  xsh_ping	(int32, char *[]);
+
+/* in file xsh_ping6.c */
+extern shellcmd	  xsh_ping6 (int32, char *[]);
 
 /* in file xsh_pdump.c */
 extern	shellcmd  xsh_pdump	(int32, char *[]);

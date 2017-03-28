@@ -331,6 +331,7 @@ process	netin (
 
 		pkt->net_iface = iface;
 
+
 		/* Convert Ethernet Type field to host order */
 
 		eth_ntoh(pkt);
@@ -349,8 +350,11 @@ process	netin (
 	
 		    case ETH_IPv6:			/* Handle IPv6	*/
 		    ipv6_in((unsigned char*) pkt);
-		    eth_hton(pkt);
-			test_send_packet(pkt);
+		    if(uip_len > 0 )
+		    {
+		    	eth_hton(pkt);
+				test_send_packet(pkt);
+			}
 			freebuf((char *)pkt);
 			continue;
 

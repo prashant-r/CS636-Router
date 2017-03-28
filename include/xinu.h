@@ -40,6 +40,7 @@
 #include <quark_irq.h>
 #include <multiboot.h>
 #include <stdio.h>
+#include <list.h>
 #include <string.h>
 #include <uip.h>
 #include <icmp6.h>
