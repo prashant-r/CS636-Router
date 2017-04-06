@@ -5,7 +5,7 @@ void ipv6_in(unsigned char * packet)
 {
   uip_buf = (unsigned char *) (packet);
   uip_next_hdr = &UIP_IP_BUF->nexthdr;
-  
+  printf("Obtained ipv6 packet\n");
   ip_ntoh();
 
   ip_debug_print();

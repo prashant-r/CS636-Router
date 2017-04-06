@@ -43,4 +43,6 @@
 #include <list.h>
 #include <string.h>
 #include <uip.h>
+#include <uip_ds.h>
 #include <icmp6.h>
+#include <uip_nbr.h>

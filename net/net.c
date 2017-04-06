@@ -105,31 +105,31 @@ void	net_init (void)
 		nchars = read(CONSOLE, buffer, 30);
 		switch (nchars) {
 		    case 2:
-			ch = buffer[0];
-			if ( (ch!='n') && (ch!='N')) {
-				continue;
-			}
-			host = FALSE;
-			ifprime = 0;
-			found = TRUE;
-			break;
-
+				ch = buffer[0];
+				if ( (ch!='n') && (ch!='N')) {
+					continue;
+				}
+				UIP_CONF_ROUTER = 1;
+				host = FALSE;
+				ifprime = 0;
+				found = TRUE;
+				break;
 		    case 3:
-			ch = buffer[0];
-			if ((ch!='h') && (ch!='H')) {
-				continue;
-			}
-			ch = buffer[1];
-			if ( (ch<'0') || (ch>'2')) {
-				continue;
-			}
-			ifprime = ch - '0';
-			host = TRUE;
-			found = TRUE;
-			break;
-
+				ch = buffer[0];
+				if ((ch!='h') && (ch!='H')) {
+					continue;
+				}
+				UIP_CONF_ROUTER = 0;
+				ch = buffer[1];
+				if ( (ch<'0') || (ch>'2')) {
+					continue;
+				}
+				ifprime = ch - '0';
+				host = TRUE;
+				found = TRUE;
+				break;
 		    default:
-			continue;
+				continue;
 		}
 
 	}
@@ -256,6 +256,8 @@ void	net_init (void)
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macucast, 0);
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macbcast, 0);
 
+	memcpy( &macbcast,ifptr->if_macbcast, UIP_LLADDR_LEN);
+
 	if (host) {
 		printf("\nRunning host on %s\n", if_tab[ifprime].if_name);
 		if_tab[ifprime].if_state = IF_UP;
@@ -272,6 +274,9 @@ void	net_init (void)
 	/*	demultiplexes them to the correct interface		*/
 
 	resume(create(rawin, 4096, 8000, "raw_input", 0));
+
+
+	resume(create(periodic_process, 4096, 8000, "periodic", 0));
 	
 	for (iface=0; iface<NIFACES; iface++) {
 		sprintf(pname, "net%d_input", iface);
@@ -330,8 +335,6 @@ process	netin (
 		/* Store interface number in packet buffer */
 
 		pkt->net_iface = iface;
-
-
 		/* Convert Ethernet Type field to host order */
 
 		eth_ntoh(pkt);
@@ -379,6 +382,20 @@ void test_send_packet(struct netpacket *pkt)
 }
 
 
+process periodic_process(void)
+{
+	while(1)
+	{
+		printf("uip_conf_router is %d \n", UIP_CONF_ROUTER);
+		if(!UIP_CONF_ROUTER)
+ 			uip_ds6_send_rs();
+      	uip_ds6_periodic();
+		sleep(60);
+	}
+}
+
+
+
 /*------------------------------------------------------------------------
  * rawin - continuously read the next incoming frame, examine the MAC
  *		address, and enqueue on the appropriate interface queue
@@ -403,7 +420,7 @@ process	rawin (void) {
 
 		if ( (pkt->net_src[1] & 0xff) == 0x80 &&
 			(pkt->net_src[2] & 0xff) == 0x0a ) {
-			pkt->net_src[0] |= 0x01;
+				pkt->net_src[0] |= 0x01;
 		}
 
 		if (packetdump == 2) {

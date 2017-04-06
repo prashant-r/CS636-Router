@@ -113,6 +113,7 @@ uint8_t uip_icmp6_input(char * packet, uint8_t type, uint8_t icode)
       break;
     case ICMP6_RS:
       PRINTF("Its a RS \n");
+      rs_input();
       break;
     case ICMP6_RA:
       PRINTF("Its a RA \n");
@@ -229,7 +230,7 @@ void ns_input()
   uip_ipaddr_copy(&tmp_ipaddr, (&UIP_ND6_NS_BUF->tgtipaddr));
   PRINTF("\n");
   #if UIP_CONF_IPV6_CHECKS
-  if((UIP_IP_BUF->hoplim != UIP_ND6_HOP_LIMIT) ||
+  if((UIP_IP_BUF->ttl != UIP_ND6_HOP_LIMIT) ||
      (uip_is_addr_mcast(&UIP_ND6_NS_BUF->tgtipaddr)) ||
      (UIP_ICMP_BUF->icode != 0)) {
     PRINTF("NS received is bad\n");
@@ -246,13 +247,12 @@ void ns_input()
 
   create_na:
      /* If the node is a router it should set R flag in NAs */
-    #if UIP_CONF_ROUTER
+    if(UIP_CONF_ROUTER)
       flags = flags | UIP_ND6_NA_FLAG_ROUTER;
-    #endif
     uip_ext_len = 0;
     UIP_IP_BUF->len = UIP_ICMPH_LEN + UIP_ND6_NA_LEN + UIP_ND6_OPT_LLAO_LEN;
     UIP_IP_BUF->nexthdr = UIP_PROTO_ICMP6;
-    UIP_IP_BUF->hoplim = UIP_ND6_HOP_LIMIT;
+    UIP_IP_BUF->ttl = UIP_ND6_HOP_LIMIT;
 
     UIP_ICMP_BUF->type = ICMP6_NA;
     UIP_ICMP_BUF->icode = 0;
@@ -283,3 +283,122 @@ void ns_input()
       return;
 }
 
+
+void
+uip_nd6_rs_output(void)
+{
+  UIP_IP_BUF->v = 6;
+  UIP_IP_BUF->nexthdr = UIP_PROTO_ICMP6;
+  UIP_IP_BUF->ttl = 255;
+  uip_create_linklocal_allrouters_mcast(&UIP_IP_BUF->destipaddr);
+  uip_ipaddr_copy(&UIP_IP_BUF->srcipaddr, &tmp_ipaddr);
+  UIP_ICMP_BUF->type = ICMP6_RS;
+  UIP_ICMP_BUF->icode = 0;
+  UIP_IP_BUF->len = 0;       /* length will not be more than 255 */
+
+  if(uip_is_addr_unspecified(&UIP_IP_BUF->srcipaddr)) {
+    UIP_IP_BUF->len = UIP_ICMPH_LEN + UIP_ND6_RS_LEN;
+    uip_len = uip_l3_icmp_hdr_len + UIP_ND6_RS_LEN;
+  } else {
+    uip_len = uip_l3_icmp_hdr_len + UIP_ND6_RS_LEN + UIP_ND6_OPT_LLAO_LEN;
+    UIP_IP_BUF->len =
+      UIP_ICMPH_LEN + UIP_ND6_RS_LEN + UIP_ND6_OPT_LLAO_LEN;
+
+    create_llao(&uip_buf[uip_l2_l3_icmp_hdr_len + UIP_ND6_RS_LEN],
+                UIP_ND6_OPT_SLLAO);
+  }
+
+  UIP_ICMP_BUF->icmpchksum = 0;
+  UIP_ICMP_BUF->icmpchksum = ~uip_icmp6chksum();
+  //PRINTF("Sendin RS to ");
+  //PRINT6ADDR(&UIP_IP_BUF->destipaddr);
+  //PRINTF(" from ");
+  //PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
+  PRINTF("\n");
+  return;
+}
+
+void rs_input()
+{
+    PRINTF("Received RS from ");
+    PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
+    PRINTF(" to ");
+    PRINT6ADDR(&UIP_IP_BUF->destipaddr);
+    PRINTF("\n");
+
+    #if UIP_CONF_IPV6_CHECKS
+    /*
+    *  Check hop limit / icmp code
+    * target address must not be multicast
+    * if the NA is solicited, dest must not be multicast
+    */
+    if((UIP_IP_BUF->ttl != UIP_ND6_HOP_LIMIT) || (UIP_ICMP_BUF->icode != 0)) {
+      PRINTF("RS received is bad\n");
+      goto discard;
+    }
+    #endif /*UIP_CONF_IPV6_CHECKS */
+
+    /* Only valid option is Source Link-Layer Address option any thing
+     else is discarded */
+    nd6_opt_offset = UIP_ND6_RS_LEN;
+    nd6_opt_llao = NULL;
+
+    while(uip_l3_icmp_hdr_len + nd6_opt_offset < uip_len) {
+    #if UIP_CONF_IPV6_CHECKS
+      if(UIP_ND6_OPT_HDR_BUF->len == 0) {
+        PRINTF("RS received is bad\n");
+        goto discard;
+      }
+    #endif /*UIP_CONF_IPV6_CHECKS */
+    switch (UIP_ND6_OPT_HDR_BUF->type) {
+      case UIP_ND6_OPT_SLLAO:
+        nd6_opt_llao = (uint8_t *)UIP_ND6_OPT_HDR_BUF;
+        break;
+      default:
+        PRINTF("ND option not supported in RS\n");
+        break;
+      }
+      nd6_opt_offset += (UIP_ND6_OPT_HDR_BUF->len << 3);
+    }
+    /* Options processing: only SLLAO */
+    if(nd6_opt_llao != NULL) {
+    #if UIP_CONF_IPV6_CHECKS
+      if(uip_is_addr_unspecified(&UIP_IP_BUF->srcipaddr)) {
+        PRINTF("RS received is bad\n");
+        goto discard;
+      } else {
+    #endif /*UIP_CONF_IPV6_CHECKS */
+        uip_lladdr_t lladdr_aligned;
+        extract_lladdr_from_llao_aligned(&lladdr_aligned);
+        if((nbr = uip_ds6_nbr_lookup(&UIP_IP_BUF->srcipaddr)) == NULL) {
+          /* we need to add the neighbor */
+          uip_ds6_nbr_add(&UIP_IP_BUF->srcipaddr, &lladdr_aligned,
+                          0, NBR_STALE, NBR_TABLE_REASON_IPV6_ND, NULL);
+        } else {
+        /* If LL address changed, set neighbor state to stale */
+          const uip_lladdr_t *lladdr = uip_ds6_nbr_get_ll(nbr);
+          if(lladdr == NULL) {
+           goto discard;
+          }
+          if(memcmp(&nd6_opt_llao[UIP_ND6_OPT_DATA_OFFSET],
+             lladdr, UIP_LLADDR_LEN) != 0) {
+           uip_ds6_nbr_t nbr_data;
+           nbr_data = *nbr;
+           uip_ds6_nbr_rm(nbr);
+           nbr = uip_ds6_nbr_add(&UIP_IP_BUF->srcipaddr, &lladdr_aligned,
+                                 0, NBR_STALE, NBR_TABLE_REASON_IPV6_ND, NULL);
+           nbr->reachable = nbr_data.reachable;
+           nbr->sendns = nbr_data.sendns;
+           nbr->nscount = nbr_data.nscount;
+          }
+         nbr->isrouter = 0;
+        }
+    #if UIP_CONF_IPV6_CHECKS
+     }
+    #endif /*UIP_CONF_IPV6_CHECKS */
+   }
+
+    discard:
+     uip_clear_buf();
+    return;
+}

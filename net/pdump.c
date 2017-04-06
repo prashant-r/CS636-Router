@@ -350,7 +350,7 @@ ip_debug_print()
   PRINTF("|    %5"U16_F"      | %2"U16_F"  |  %2"U16_F"   | (len, nexthdr, hoplim)\n",
         (UIP_IP_BUF->len),
         UIP_IP_BUF->nexthdr,
-        UIP_IP_BUF->hoplim);
+        UIP_IP_BUF->ttl);
   PRINTF("+-------------------------------+\n");
   PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
   PRINTF("   | ( src ) ");

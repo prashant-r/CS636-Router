@@ -23,8 +23,6 @@ typedef int int32_t;
 #define X32_F "x"
 #define NETSTACK_CONF_WITH_IPV6 1
 #define UIP_CONF_IPV6_CHECKS 1
-#define UIP_CONF_ROUTER 1
-
 #define UIP_IPH_LEN    40
 #define UIP_FRAGH_LEN  8 
 #define UIP_LLH_LEN     14
@@ -89,7 +87,10 @@ typedef struct uip_80211_addr {
 } uip_80211_addr;
 
 typedef uip_80211_addr uip_lladdr_t;
+
 uip_lladdr_t uip_lladdr;
+
+uip_lladdr_t macbcast;
 
 uint16_t uip_ipchksum(void);
 
@@ -104,6 +105,17 @@ typedef union uip_ip6addr_t {
   uint16_t u16[8];
   uint32_t addr[4];
 } uip_ip6addr_t;
+
+#define uip_is_addr_unspecified(a)               \
+  ((((a)->u16[0]) == 0) &&                       \
+   (((a)->u16[1]) == 0) &&                       \
+   (((a)->u16[2]) == 0) &&                       \
+   (((a)->u16[3]) == 0) &&                       \
+   (((a)->u16[4]) == 0) &&                       \
+   (((a)->u16[5]) == 0) &&                       \
+   (((a)->u16[6]) == 0) &&                       \
+   (((a)->u16[7]) == 0))
+
 
 #define uip_ip6addr(addr, addr0,addr1,addr2,addr3,addr4,addr5,addr6,addr7) do { \
     (addr)->u16[0] = UIP_HTONS(addr0);                                      \
@@ -400,6 +412,7 @@ void echo_reply();
 #define UIP_ND6_RA_FLAG_AUTONOMOUS      0x40
 
 void ns_input();
+void rs_input();
 void echo_request(char *packet);
 
 
@@ -456,7 +469,7 @@ struct uip_ip_hdr {
   uint16_t flow2;
   uint16_t len;                /* payload length */
   uint8_t nexthdr;             /* next header */
-  uint8_t hoplim;              /* hop limit (TTL) */
+  uint8_t ttl;              /* hop limit (TTL) */
   uip_ip6addr_t srcipaddr, destipaddr;          /* source and destination IP addresses */
 };
 
@@ -468,8 +481,270 @@ void  ip_hton();
 void ip_debug_print(void);
 
 
-// Neighbor Advertisement
+#define UIP_ND6_HOP_LIMIT               255
 
+#define UIP_ND6_NA_LEN                  20
+#define UIP_ND6_NS_LEN                  20
+#define UIP_ND6_RA_LEN                  12
+#define UIP_ND6_RS_LEN                  4
+
+#define UIP_ND6_OPT_LLAO_LEN           8
+
+/**@{  Pointers to messages just after icmp header */
+#define UIP_ND6_RS_BUF            ((uip_nd6_rs *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_RA_BUF            ((uip_nd6_ra *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_NS_BUF            ((uip_nd6_ns *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_NA_BUF            ((uip_nd6_na *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+
+#define UIP_ND6_OPT_SLLAO               1
+#define UIP_ND6_OPT_TLLAO               2
+#define UIP_ND6_OPT_PREFIX_INFO         3
+#define UIP_ND6_OPT_REDIRECTED_HDR      4
+#define UIP_ND6_OPT_MTU                 5
+#define UIP_ND6_OPT_RDNSS               25
+#define UIP_ND6_OPT_DNSSL               31
+
+
+/** \name ND6 option types */
+/** @{ */
+#define UIP_ND6_OPT_TYPE_OFFSET         0
+#define UIP_ND6_OPT_LEN_OFFSET          1
+#define UIP_ND6_OPT_DATA_OFFSET         2
+
+
+#define IP_HLEN 40
+
+
+
+#define uip_create_linklocal_allrouters_mcast(a) uip_ip6addr(a, 0xff02, 0, 0, 0, 0, 0, 0, 0x0001)
+
+
+void test_send_packet(struct netpacket *pkt);
+
+typedef struct uip_eth_addr {
+  uint8_t addr[6];
+} uip_eth_addr;
+
+struct uip_eth_hdr {
+  struct uip_eth_addr dest;
+  struct uip_eth_addr src;
+  uint16_t type;
+};
+
+
+static uip_ipaddr_t tmp_ipaddr;
+
+static int UIP_CONF_ROUTER = 0;
+
+void echo_request_input(void);
+
+
+void uip_nd6_rs_output(void);
+
+/**
+ *  \name General
+ * @{
+ */
+/** \brief HOP LIMIT to be used when sending ND messages (255) */
+#define UIP_ND6_HOP_LIMIT               255
+/** \brief INFINITE lifetime */
+#define UIP_ND6_INFINITE_LIFETIME       0xFFFFFFFF
+/** @} */
+
+/** \name RFC 4861 Host constant */
+/** @{ */
+/** \brief Maximum router solicitation delay */
+#ifndef UIP_CONF_ND6_MAX_RTR_SOLICITATION_DELAY
+#define UIP_ND6_MAX_RTR_SOLICITATION_DELAY 1
+#else
+#define UIP_ND6_MAX_RTR_SOLICITATION_DELAY UIP_CONF_ND6_MAX_RTR_SOLICITATION_DELAY
+#endif
+/** \brief Router solicitation interval */
+#ifndef UIP_CONF_ND6_RTR_SOLICITATION_INTERVAL
+#define UIP_ND6_RTR_SOLICITATION_INTERVAL  4
+#else
+#define UIP_ND6_RTR_SOLICITATION_INTERVAL  UIP_CONF_ND6_RTR_SOLICITATION_INTERVAL
+#endif
+/** \brief Maximum router solicitations */
+#ifndef UIP_CONF_ND6_MAX_RTR_SOLICITATIONS
+#define UIP_ND6_MAX_RTR_SOLICITATIONS      3
+#else
+#define UIP_ND6_MAX_RTR_SOLICITATIONS      UIP_CONF_ND6_MAX_RTR_SOLICITATIONS
+#endif
+/** @} */
+
+
+#define UIP_ND6_OPT_HDR_BUF  ((uip_nd6_opt_hdr *)&uip_buf[uip_l2_l3_icmp_hdr_len + nd6_opt_offset])
+
+/** \name RFC 4861 Router constants */
+/** @{ */
+#ifndef UIP_CONF_ND6_SEND_RA
+#define UIP_ND6_SEND_RA                     1   /* enable/disable RA sending */
+#else
+#define UIP_ND6_SEND_RA UIP_CONF_ND6_SEND_RA
+#endif
+#ifndef UIP_CONF_ND6_SEND_NS
+#define UIP_ND6_SEND_NS                     1   /* enable/disable NS sending */
+#else
+#define UIP_ND6_SEND_NS UIP_CONF_ND6_SEND_NS
+#endif
+#ifndef UIP_CONF_ND6_SEND_NA
+#define UIP_ND6_SEND_NA                     1   /* enable/disable NA sending */
+#else
+#define UIP_ND6_SEND_NA UIP_CONF_ND6_SEND_NA
+#endif
+#ifndef UIP_CONF_ND6_MAX_RA_INTERVAL
+#define UIP_ND6_MAX_RA_INTERVAL             600
+#else
+#define UIP_ND6_MAX_RA_INTERVAL             UIP_CONF_ND6_MAX_RA_INTERVAL
+#endif
+#ifndef UIP_CONF_ND6_MIN_RA_INTERVAL
+#define UIP_ND6_MIN_RA_INTERVAL             (UIP_ND6_MAX_RA_INTERVAL / 3)
+#else
+#define UIP_ND6_MIN_RA_INTERVAL             UIP_CONF_ND6_MIN_RA_INTERVAL
+#endif
+#define UIP_ND6_M_FLAG                      0
+#define UIP_ND6_O_FLAG                      (UIP_ND6_RA_RDNSS || UIP_ND6_RA_DNSSL)
+#ifndef UIP_CONF_ROUTER_LIFETIME
+#define UIP_ND6_ROUTER_LIFETIME             3 * UIP_ND6_MAX_RA_INTERVAL
+#else
+#define UIP_ND6_ROUTER_LIFETIME             UIP_CONF_ROUTER_LIFETIME
+#endif
+
+#define UIP_ND6_MAX_INITIAL_RA_INTERVAL     16  /*seconds*/
+#define UIP_ND6_MAX_INITIAL_RAS             3   /*transmissions*/
+#ifndef UIP_CONF_ND6_MIN_DELAY_BETWEEN_RAS
+#define UIP_ND6_MIN_DELAY_BETWEEN_RAS       3   /*seconds*/
+#else
+#define UIP_ND6_MIN_DELAY_BETWEEN_RAS       UIP_CONF_ND6_MIN_DELAY_BETWEEN_RAS
+#endif
+//#define UIP_ND6_MAX_RA_DELAY_TIME           0.5 /*seconds*/
+#define UIP_ND6_MAX_RA_DELAY_TIME_MS        500 /*milli seconds*/
+/** @} */
+
+#ifndef UIP_CONF_ND6_DEF_MAXDADNS
+/** \brief Do not try DAD when using EUI-64 as allowed by draft-ietf-6lowpan-nd-15 section 8.2 */
+#if UIP_CONF_LL_802154
+#define UIP_ND6_DEF_MAXDADNS 0
+#else /* UIP_CONF_LL_802154 */
+#define UIP_ND6_DEF_MAXDADNS UIP_ND6_SEND_NS
+#endif /* UIP_CONF_LL_802154 */
+#else /* UIP_CONF_ND6_DEF_MAXDADNS */
+#define UIP_ND6_DEF_MAXDADNS UIP_CONF_ND6_DEF_MAXDADNS
+#endif /* UIP_CONF_ND6_DEF_MAXDADNS */
+
+/** \name RFC 4861 Node constant */
+#define UIP_ND6_MAX_MULTICAST_SOLICIT  3
+
+#ifdef UIP_CONF_ND6_MAX_UNICAST_SOLICIT
+#define UIP_ND6_MAX_UNICAST_SOLICIT    UIP_CONF_ND6_MAX_UNICAST_SOLICIT
+#else /* UIP_CONF_ND6_MAX_UNICAST_SOLICIT */
+#define UIP_ND6_MAX_UNICAST_SOLICIT    3
+#endif /* UIP_CONF_ND6_MAX_UNICAST_SOLICIT */
+
+#ifdef UIP_CONF_ND6_REACHABLE_TIME
+#define UIP_ND6_REACHABLE_TIME         UIP_CONF_ND6_REACHABLE_TIME
+#else
+#define UIP_ND6_REACHABLE_TIME         30000
+#endif
+
+#ifdef UIP_CONF_ND6_RETRANS_TIMER
+#define UIP_ND6_RETRANS_TIMER          UIP_CONF_ND6_RETRANS_TIMER
+#else
+#define UIP_ND6_RETRANS_TIMER          1000
+#endif
+
+#define UIP_ND6_DELAY_FIRST_PROBE_TIME 5
+#define UIP_ND6_MIN_RANDOM_FACTOR(x)   (x / 2)
+#define UIP_ND6_MAX_RANDOM_FACTOR(x)   ((x) + (x) / 2)
+/** @} */
+
+
+/** \name RFC 6106 RA DNS Options Constants  */
+/** @{ */
+#ifndef UIP_CONF_ND6_RA_RDNSS
+#define UIP_ND6_RA_RDNSS                0
+#else
+#define UIP_ND6_RA_RDNSS                UIP_CONF_ND6_RA_RDNSS
+#endif
+
+#ifndef UIP_CONF_ND6_RA_DNSSL
+#define UIP_ND6_RA_DNSSL                0
+#else
+#error Not implemented
+#define UIP_ND6_RA_DNSSL                UIP_CONF_ND6_RA_DNSSL
+#endif
+/** @} */
+
+
+/** \name ND6 option types */
+/** @{ */
+#define UIP_ND6_OPT_SLLAO               1
+#define UIP_ND6_OPT_TLLAO               2
+#define UIP_ND6_OPT_PREFIX_INFO         3
+#define UIP_ND6_OPT_REDIRECTED_HDR      4
+#define UIP_ND6_OPT_MTU                 5
+#define UIP_ND6_OPT_RDNSS               25
+#define UIP_ND6_OPT_DNSSL               31
+/** @} */
+
+/** \name ND6 option types */
+/** @{ */
+#define UIP_ND6_OPT_TYPE_OFFSET         0
+#define UIP_ND6_OPT_LEN_OFFSET          1
+#define UIP_ND6_OPT_DATA_OFFSET         2
+
+/** \name ND6 message length (excluding options) */
+/** @{ */
+#define UIP_ND6_NA_LEN                  20
+#define UIP_ND6_NS_LEN                  20
+#define UIP_ND6_RA_LEN                  12
+#define UIP_ND6_RS_LEN                  4
+/** @} */
+
+
+/** \name ND6 option length in bytes */
+/** @{ */
+#define UIP_ND6_OPT_HDR_LEN            2
+#define UIP_ND6_OPT_PREFIX_INFO_LEN    32
+#define UIP_ND6_OPT_MTU_LEN            8
+#define UIP_ND6_OPT_RDNSS_LEN          1
+#define UIP_ND6_OPT_DNSSL_LEN          1
+
+
+/* Length of TLLAO and SLLAO options, it is L2 dependant */
+#if UIP_CONF_LL_802154
+/* If the interface is 802.15.4. For now we use only long addresses */
+#define UIP_ND6_OPT_SHORT_LLAO_LEN     8
+#define UIP_ND6_OPT_LONG_LLAO_LEN      16
+/** \brief length of a ND6 LLAO option for 802.15.4 */
+#define UIP_ND6_OPT_LLAO_LEN UIP_ND6_OPT_LONG_LLAO_LEN
+#else /*UIP_CONF_LL_802154*/
+#if UIP_CONF_LL_80211
+/* If the interface is 802.11 */
+/** \brief length of a ND6 LLAO option for 802.11 */
+#define UIP_ND6_OPT_LLAO_LEN           8
+#else /*UIP_CONF_LL_80211*/
+/** \brief length of a ND6 LLAO option for default L2 type (e.g. Ethernet) */
+#define UIP_ND6_OPT_LLAO_LEN           8
+#endif /*UIP_CONF_LL_80211*/
+#endif /*UIP_CONF_LL_802154*/
+/** @} */
+
+
+/** \name Neighbor Advertisement flags masks */
+/** @{ */
+#define UIP_ND6_NA_FLAG_ROUTER          0x80
+#define UIP_ND6_NA_FLAG_SOLICITED       0x40
+#define UIP_ND6_NA_FLAG_OVERRIDE        0x20
+#define UIP_ND6_RA_FLAG_ONLINK          0x80
+#define UIP_ND6_RA_FLAG_AUTONOMOUS      0x40
+/** @} */
+
+/**
+ * \name ND message structures
+ * @{
+ */
 
 /**
  * \brief A neighbor solicitation constant part
@@ -514,55 +789,282 @@ typedef struct uip_nd6_ra {
   uint32_t retrans_timer;
 } uip_nd6_ra;
 
+/**
+ * \brief A redirect message constant part
+ *
+ * Possible options are: TLLAO, redirected header
+ */
+typedef struct uip_nd6_redirect {
+  uint32_t reserved;
+  uip_ipaddr_t tgtipaddress;
+  uip_ipaddr_t destipaddress;
+} uip_nd6_redirect;
+/** @} */
 
-#define UIP_ND6_HOP_LIMIT               255
+/**
+ * \name ND Option structures
+ * @{
+ */
 
-#define UIP_ND6_NA_LEN                  20
-#define UIP_ND6_NS_LEN                  20
-#define UIP_ND6_RA_LEN                  12
-#define UIP_ND6_RS_LEN                  4
+/** \brief ND option header */
+typedef struct uip_nd6_opt_hdr {
+  uint8_t type;
+  uint8_t len;
+} uip_nd6_opt_hdr;
 
-#define UIP_ND6_OPT_LLAO_LEN           8
+/** \brief ND option prefix information */
+typedef struct uip_nd6_opt_prefix_info {
+  uint8_t type;
+  uint8_t len;
+  uint8_t preflen;
+  uint8_t flagsreserved1;
+  uint32_t validlt;
+  uint32_t preferredlt;
+  uint32_t reserved2;
+  uip_ipaddr_t prefix;
+} uip_nd6_opt_prefix_info ;
 
-/**@{  Pointers to messages just after icmp header */
-#define UIP_ND6_RS_BUF            ((uip_nd6_rs *)&uip_buf[uip_l2_l3_icmp_hdr_len])
-#define UIP_ND6_RA_BUF            ((uip_nd6_ra *)&uip_buf[uip_l2_l3_icmp_hdr_len])
-#define UIP_ND6_NS_BUF            ((uip_nd6_ns *)&uip_buf[uip_l2_l3_icmp_hdr_len])
-#define UIP_ND6_NA_BUF            ((uip_nd6_na *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+/** \brief ND option MTU */
+typedef struct uip_nd6_opt_mtu {
+  uint8_t type;
+  uint8_t len;
+  uint16_t reserved;
+  uint32_t mtu;
+} uip_nd6_opt_mtu;
 
-#define UIP_ND6_OPT_SLLAO               1
-#define UIP_ND6_OPT_TLLAO               2
-#define UIP_ND6_OPT_PREFIX_INFO         3
-#define UIP_ND6_OPT_REDIRECTED_HDR      4
-#define UIP_ND6_OPT_MTU                 5
-#define UIP_ND6_OPT_RDNSS               25
-#define UIP_ND6_OPT_DNSSL               31
+/** \brief ND option RDNSS */
+typedef struct uip_nd6_opt_dns {
+  uint8_t type;
+  uint8_t len;
+  uint16_t reserved;
+  uint32_t lifetime;
+  uip_ipaddr_t ip;
+} uip_nd6_opt_dns;
+
+/** \struct Redirected header option */
+typedef struct uip_nd6_opt_redirected_hdr {
+  uint8_t type;
+  uint8_t len;
+  uint8_t reserved[6];
+} uip_nd6_opt_redirected_hdr;
+/** @} */
+
+/**
+ * \name ND Messages Processing and Generation
+ * @{
+ */
+ /**
+ * \brief Send a neighbor solicitation, send a Neighbor Advertisement
+ * \param src pointer to the src of the NS if known
+ * \param dest pointer to ip address to send the NS, for DAD or ADDR Resol,
+ * MUST be NULL, for NUD, must be correct unicast dest
+ * \param tgt  pointer to ip address to fill the target address field, must
+ * not be NULL
+ *
+ * - RFC 4861, 7.2.2 :
+ *   "If the source address of the packet prompting the solicitation is the
+ *   same as one of the addresses assigned to the outgoing interface, that
+ *   address SHOULD be placed in the IP Source Address of the outgoing
+ *   solicitation.  Otherwise, any one of the addresses assigned to the
+ *   interface should be used."
+ *   This is why we have a src ip address as argument. If NULL, we will do
+ *   src address selection, otherwise we use the argument.
+ *
+ * - we check if it is a NS for Address resolution  or NUD, if yes we include
+ *   a SLLAO option, otherwise no.
+ */
+void
+uip_nd6_ns_output(uip_ipaddr_t *src, uip_ipaddr_t *dest, uip_ipaddr_t *tgt);
+
+#if UIP_CONF_ROUTER
+#if UIP_ND6_SEND_RA
+/**
+ * \brief send a Router Advertisement
+ *
+ * Only for router, for periodic as well as sollicited RA
+ */
+void uip_nd6_ra_output(uip_ipaddr_t *dest);
+#endif /* UIP_ND6_SEND_RA */
+#endif /*UIP_CONF_ROUTER*/
+
+/**
+ * \brief Send a Router Solicitation
+ *
+ * src is chosen through the uip_netif_select_src function. If src is
+ * unspecified  (i.e. we do not have a preferred address yet), then we do not
+ * put a SLLAO option (MUST NOT in RFC 4861). Otherwise we do.
+ *
+ * RS message format,
+ * possible option is SLLAO, MUST NOT be included if source = unspecified
+ * SHOULD be included otherwise
+ */
+void uip_nd6_rs_output(void);
+
+/**
+ * \brief Initialise the uIP ND core
+ */
+void uip_nd6_init(void);
+/** @} */
 
 
-/** \name ND6 option types */
-/** @{ */
-#define UIP_ND6_OPT_TYPE_OFFSET         0
-#define UIP_ND6_OPT_LEN_OFFSET          1
-#define UIP_ND6_OPT_DATA_OFFSET         2
+void
+uip_appserver_addr_get(uip_ipaddr_t *ipaddr);
+/*--------------------------------------*/
+/******* ANNEX - message formats ********/
+/*--------------------------------------*/
 
-
-#define IP_HLEN 40
-
-
-void test_send_packet(struct netpacket *pkt);
-
-typedef struct uip_eth_addr {
-  uint8_t addr[6];
-} uip_eth_addr;
-
-struct uip_eth_hdr {
-  struct uip_eth_addr dest;
-  struct uip_eth_addr src;
-  uint16_t type;
-};
-
-
-static uip_ipaddr_t tmp_ipaddr;
-void echo_request_input(void);
-
-#endif /* UIP_H_ */
+/*
+ * RS format. possible option is SLLAO
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |     Code      |          Checksum             |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                            Reserved                           |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |   Options ...
+ *    +-+-+-+-+-+-+-+-+-+-+-+-
+ *
+ *
+ * RA format. possible options: prefix information, MTU, SLLAO
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |     Code      |          Checksum             |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    | Cur Hop Limit |M|O|  Reserved |       Router Lifetime         |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                         Reachable Time                        |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                          Retrans Timer                        |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |   Options ...
+ *    +-+-+-+-+-+-+-+-+-+-+-+-
+ *
+ *
+ * NS format: options should be SLLAO
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |     Code      |          Checksum             |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                           Reserved                            |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +                       Target Address                          +
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |   Options ...
+ *    +-+-+-+-+-+-+-+-+-+-+-+-
+ *
+ *
+ * NA message format. possible options is TLLAO
+ *
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |     Code      |          Checksum             |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |R|S|O|                     Reserved                            |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +                       Target Address                          +
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |   Options ...
+ *    +-+-+-+-+-+-+-+-+-+-+-+-
+ *
+ *
+ * Redirect message format. Possible options are TLLAO and Redirected header
+ *
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |     Code      |          Checksum             |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                           Reserved                            |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +                       Target Address                          +
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +                     Destination Address                       +
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |   Options ...
+ *    +-+-+-+-+-+-+-+-+-+-+-+-
+ *
+ *
+ * SLLAO/TLLAO option:
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |    Length     |    Link-Layer Address ...
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *
+ * Prefix information option
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |    Length     | Prefix Length |L|A| Reserved1 |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                         Valid Lifetime                        |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                       Preferred Lifetime                      |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                           Reserved2                           |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +                            Prefix                             +
+ *    |                                                               |
+ *    +                                                               +
+ *    |                                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *
+ * MTU option
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |    Length     |           Reserved            |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                              MTU                              |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ *
+ * Redirected header option
+ *
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |     Type      |    Length     |            Reserved           |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                           Reserved                            |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    |                                                               |
+ *    ~                       IP header + data                        ~
+ *    |                                                               |
+ *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ */
+#endif /* UIP_ND6_H_ */

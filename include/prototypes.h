@@ -154,6 +154,7 @@ extern	devcall	ionull(void);
 extern	void	net_init(void);
 extern	process	netin(int32);
 extern	process	rawin(void);
+extern  process periodic_process(void);
 extern	void	eth_hton(struct netpacket *);
 extern	void	eth_ntoh(struct netpacket *);
 extern	uint16	getport(void);
