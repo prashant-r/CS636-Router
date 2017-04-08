@@ -45,7 +45,8 @@ void	net_init (void)
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
 	bool8	found;			/* Controls user input loop	*/
 	char	buffer[40];		/* Buffer to hold input		*/
-	int32	bingid;			/* User's Bing ID		*/
+	int32	bingid;				uip_ds6_init();
+/* User's Bing ID		*/
 	int32	nchars;			/* Number of characters read	*/
 	char	ch;			/* One character of input	*/
 	int32	uid;			/* Unique ID for this node	*/
@@ -60,7 +61,6 @@ void	net_init (void)
 
 	netportseed = getticks();
 
-
 	/* Allocate the global buffer pool shared by all interfaces */
 
 	nbufs = NIFACES * IF_QUEUESIZE + 1;
@@ -73,7 +73,7 @@ void	net_init (void)
 
 	/* Ask the user for a Bing ID */
 
-	found = FALSE;
+	found = TRUE;
 	while (!found) {
 		printf("\nEnter a bing ID between 0 and 255: ");
 		nchars = read(CONSOLE, buffer, 5);
@@ -95,43 +95,23 @@ void	net_init (void)
 		}
 		found = TRUE;
 	}
+
+	bingid = 59;
 	printf("Bing ID is set to %d.\n", bingid);
-
 	/* Ask the user what to run */
-
 	found = FALSE;
 	while (!found) {
-		printf("\nEnter n for nat box or hX for host on interface X: ");
-		nchars = read(CONSOLE, buffer, 30);
-		switch (nchars) {
-		    case 2:
-				ch = buffer[0];
-				if ( (ch!='n') && (ch!='N')) {
-					continue;
-				}
-				UIP_CONF_ROUTER = 1;
+			#if UIP_CONF_ROUTER
 				host = FALSE;
 				ifprime = 0;
 				found = TRUE;
 				break;
-		    case 3:
-				ch = buffer[0];
-				if ((ch!='h') && (ch!='H')) {
-					continue;
-				}
-				UIP_CONF_ROUTER = 0;
-				ch = buffer[1];
-				if ( (ch<'0') || (ch>'2')) {
-					continue;
-				}
-				ifprime = ch - '0';
+		    #else
+				ifprime = HOST;
 				host = TRUE;
 				found = TRUE;
 				break;
-		    default:
-				continue;
-		}
-
+		    #endif
 	}
 
 	/* Initialize three network interfaces: one for the the		*/
@@ -191,6 +171,10 @@ void	net_init (void)
 	ifptr = &if_tab[0];
 
 	control(ETHER0, ETH_CTRL_GET_MAC, (int32) ifptr->if_macucast, 0);
+
+	control(ETHER0, ETH_CTRL_GET_MAC, (int32) &uip_lladdr, 0);
+
+	uip_ds6_init();
 
 	/* Set the broadcast address to all 1's */
 

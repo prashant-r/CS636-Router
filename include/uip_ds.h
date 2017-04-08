@@ -1,6 +1,6 @@
 #ifndef UIP_DS6_H_
 #define UIP_DS6_H_
-
+#include <router-conf.h>
 /*--------------------------------------------------*/
 /** Configuration. For all tables (Neighbor cache, Prefix List, Routing Table,
  * Default Router List, Unicast address list, multicast address list, anycast address list),

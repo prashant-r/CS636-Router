@@ -47,12 +47,24 @@ struct procent {		/* Entry in the process table		*/
 	char	*prstkbase;	/* Base of run time stack		*/
 	uint32	prstklen;	/* Stack length in bytes		*/
 	char	prname[PNMLEN];	/* Process name				*/
-	sid32	prsem;		/* Semaphore on which process waits	*/
+	uint32	prsem;		/* Semaphore on which process waits	*/
 	pid32	prparent;	/* ID of the creating process		*/
 	umsg32	prmsg;		/* Message sent to this process		*/
 	bool8	prhasmsg;	/* Nonzero iff msg is valid		*/
 	int16	prdesc[NDESC];	/* Device descriptors for process	*/
-};
+	uint32  prcpumsec; /* to keep track of the CPU time used by a process */
+	uint32 	prctxswintime; /* to keep track of the context switch in time*/
+	umsg32 	sndmsg; /* holds the msg to be sent */
+	bool8 	sndflag; /* checks validity of msg to be sent */
+	qid16 	senderq; /* queue full of senders for a given receiving process*/
+	int 	(*callback) (void); /* registered call back function for the receiving process */
+	int     (*alarmfunc) (void); // point to the alarm callback
+	uint32  alarmtime; // time when the alarm goes off
+	int     (*xcpufunc) (void); // point to the callback function of the xcpu signal
+	int  xcputime; // amount of time allowed by cpu until callback will be called
+	bool8 	alarmTimeOut; // Indicate alarm timed out and is ready to execute the callback procedure
+ };
+
 
 /* Marker for the top of a process stack (used to help detect overflow)	*/
 #define	STACKMAGIC	0x0A0AAAA9

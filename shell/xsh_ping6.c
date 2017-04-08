@@ -7,7 +7,7 @@
 
 static uint8_t count = 0;
 static char command[20];
-static uint16_t addr[8];
+static uint16_t address[8];
 uip_ipaddr_t dest_addr;
 
 /*---------------------------------------------------------------------------*/
@@ -33,13 +33,13 @@ shellcmd xsh_ping6(int nargs, char *args[])
   if(count == 0){
 #if MACDEBUG
     // Setup destination address.
-    addr[0] = 0xFE80;
-    addr[4] = 0x6466;
-    addr[5] = 0x6666;
-    addr[6] = 0x6666;
-    addr[7] = 0x6666;
-    uip_ip6addr(&dest_addr, addr[0], addr[1],addr[2],
-                addr[3],addr[4],addr[5],addr[6],addr[7]);
+    address[0] = 0xFE80;
+    address[4] = 0x6466;
+    address[5] = 0x6666;
+    address[6] = 0x6666;
+    address[7] = 0x6666;
+    uip_ip6addr(&dest_addr, address[0], address[1],address[2],
+                address[3],address[4],address[5],address[6],address[7]);
 
     // Set the command to fool the 'if' below.
     memcpy(command, (void *)"ping6", 5);
@@ -65,7 +65,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
       {
-        addr[0] = token;
+        address[0] = token;
     }
     else{
       PRINTF("-x- invalid address \n");
@@ -74,55 +74,55 @@ shellcmd xsh_ping6(int nargs, char *args[])
 
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
-      addr[1] = token;
+      address[1] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
-      addr[2] = token;
+      address[2] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
-      addr[3] = token;
+      address[3] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
-      addr[4] = token;
+      address[4] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
-      addr[5] = token;
+      address[5] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
     token = strtok(buf, search);
     if(token != NULL && strlen(token) == 4)
-      addr[6] = token;
+      address[6] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
     token = strtok(buf, '.');
     if(token != NULL && strlen(token) == 4)
-      addr[7] = token;
+      address[7] = token;
     else{
       PRINTF("-x- invalid address \n");
       return -1;
     }
-    uip_ip6addr(&dest_addr, addr[0], addr[1],addr[2],
-                  addr[3],addr[4],addr[5],addr[6],addr[7]);
+    uip_ip6addr(&dest_addr, address[0], address[1],address[2],
+                  address[3],address[4],address[5],address[6],address[7]);
 
     PRINTF("address entered is %s \n");
 #endif
@@ -135,7 +135,7 @@ shellcmd xsh_ping6(int nargs, char *args[])
     UIP_IP_BUF->tclass1 = 1;
     UIP_IP_BUF->flow2 = 0;
     UIP_IP_BUF->nexthdr = UIP_PROTO_ICMP6;
-    UIP_IP_BUF->hoplim = 1;
+    UIP_IP_BUF->ttl = 254;
     uip_ipaddr_copy(&UIP_IP_BUF->destipaddr, &dest_addr);
     uip_ipaddr_copy(&UIP_IP_BUF->srcipaddr,  &tmp_ipaddr);
 

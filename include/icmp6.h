@@ -1,6 +1,6 @@
 #ifndef ICMP6_H_
 #define ICMP6_H_
-
+#include <router-conf.h>
 /** \name ICMPv6 message types */
  /** @{ */
 #define ICMP6_DST_UNREACH                 1	/**< dest unreachable */

@@ -11,7 +11,7 @@ process	main(void)
 	recvclr();
 	resume(create(shell, 8192, 50, "shell", 1, CONSOLE));
 
-	/* Wait for shell to exit and recreate it */
+//	 Wait for shell to exit and recreate it 
 
 	while (TRUE) {
 		receive();
@@ -22,3 +22,23 @@ process	main(void)
 	return OK;
     
 }
+
+// #include <xinu.h>
+// #include <stdio.h>
+
+// /* global variable */
+// process	main(void)
+// {
+// 	kprintf("\n------------LAB 4 Q 3 SIGTESTS ------------ \n");
+// 	recvclr();
+// 	lab4q3_AllTests();
+// 	resume(create(shell, 8192, 50, "shell", 1, CONSOLE));
+// 	while(TRUE)
+// 	{
+// 		receive();
+// 		sleepms(200);
+// 		kprintf("\n\nMain process recreating shell\n\n");
+// 		resume(create(shell, 4096, 20, "shell", 1, CONSOLE));
+// 	}
+// 	return OK;
+// }

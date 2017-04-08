@@ -1,5 +1,8 @@
 #ifndef UIP_DS6_NEIGHBOR_H_
 #define UIP_DS6_NEIGHBOR_H_
+
+#include <router-conf.h>
+
 #if UIP_CONF_IPV6_QUEUE_PKT
 #include "net/ip/uip-packetqueue.h"
 #endif                   
@@ -10,12 +13,89 @@
 #define LINKADDR_SIZE 2
 #endif /* LINKADDR_SIZE */
 
+void ipv6_in(unsigned char * packet);
+
+
 typedef union {
   unsigned char u8[LINKADDR_SIZE];
 #if LINKADDR_SIZE == 2
   uint16_t u16;
 #endif /* LINKADDR_SIZE == 2 */
 } linkaddr_t;
+
+typedef union {
+  uint8_t u8[8];
+  uint16_t u16[4];
+} linkaddr_extended_t;
+
+/**
+ * \brief      Copy a Rime address
+ * \param dest The destination
+ * \param from The source
+ *
+ *             This function copies a Rime address from one location
+ *             to another.
+ *
+ */
+void linkaddr_copy(linkaddr_t *dest, const linkaddr_t *from);
+
+/**
+ * \brief      Compare two Rime addresses
+ * \param addr1 The first address
+ * \param addr2 The second address
+ * \return     Non-zero if the addresses are the same, zero if they are different
+ *
+ *             This function compares two Rime addresses and returns
+ *             the result of the comparison. The function acts like
+ *             the '==' operator and returns non-zero if the addresses
+ *             are the same, and zero if the addresses are different.
+ *
+ */
+int linkaddr_cmp(const linkaddr_t *addr1, const linkaddr_t *addr2);
+
+
+/**
+ * \brief      Set the address of the current node
+ * \param addr The address
+ *
+ *             This function sets the Rime address of the node.
+ *
+ */
+void linkaddr_set_node_addr(linkaddr_t *addr);
+
+/**
+ * \brief      The Rime address of the node
+ *
+ *             This variable contains the Rime address of the
+ *             node. This variable should not be changed directly;
+ *             rather, the linkaddr_set_node_addr() function should be
+ *             used.
+ *
+ */
+extern linkaddr_t linkaddr_node_addr;
+
+/**
+ * \brief      The null Rime address
+ *
+ *             This variable contains the null Rime address. The null
+ *             address is used in route tables to indicate that the
+ *             table entry is unused. Nodes with no configured address
+ *             has the null address. Nodes with their node address set
+ *             to the null address will have problems communicating
+ *             with other nodes.
+ *
+ */
+extern const linkaddr_t linkaddr_null;
+
+
+/*--------------------------------------------------*/
+/** \brief Possible states for the nbr cache entries */
+#define  NBR_INCOMPLETE 0
+#define  NBR_REACHABLE 1
+#define  NBR_STALE 2
+#define  NBR_DELAY 3
+#define  NBR_PROBE 4
+
 
 /* Neighbor table size */
 #ifdef NBR_TABLE_CONF_MAX_NEIGHBORS
@@ -91,13 +171,6 @@ linkaddr_t *nbr_table_get_lladdr(nbr_table_t *table, const nbr_table_item_t *ite
 int nbr_table_update_lladdr(const linkaddr_t *old_addr, const linkaddr_t *new_addr, int remove_if_duplicate);
 /** @} */
 
-/*--------------------------------------------------*/
-/** \brief Possible states for the nbr cache entries */
-#define  NBR_INCOMPLETE 0
-#define  NBR_REACHABLE 1
-#define  NBR_STALE 2
-#define  NBR_DELAY 3
-#define  NBR_PROBE 4
 
 NBR_TABLE_DECLARE(ds6_neighbors);
 

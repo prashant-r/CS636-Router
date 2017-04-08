@@ -1,7 +1,7 @@
 #ifndef UIP_H_
 #define UIP_H_
 #define DEBUG 1
-
+#include <router-conf.h>
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
@@ -128,6 +128,21 @@ typedef union uip_ip6addr_t {
     (addr)->u16[7] = UIP_HTONS(addr7);                                      \
   } while(0)
 
+
+/**
+ * \brief Is IPv6 address a the unspecified address
+ * a is of type uip_ipaddr_t
+ */
+#define uip_is_addr_loopback(a)                  \
+  ((((a)->u16[0]) == 0) &&                       \
+   (((a)->u16[1]) == 0) &&                       \
+   (((a)->u16[2]) == 0) &&                       \
+   (((a)->u16[3]) == 0) &&                       \
+   (((a)->u16[4]) == 0) &&                       \
+   (((a)->u16[5]) == 0) &&                       \
+   (((a)->u16[6]) == 0) &&                       \
+   (((a)->u8[14]) == 0) &&                       \
+   (((a)->u8[15]) == 0x01))
 
 #if NETSTACK_CONF_WITH_IPV6
 typedef uip_ip6addr_t uip_ipaddr_t;
@@ -369,6 +384,8 @@ extern void icmp6_input();
 
 void echo_reply();
 
+
+#define uip_create_linklocal_allnodes_mcast(a) uip_ip6addr(a, 0xff02, 0, 0, 0, 0, 0, 0, 0x0001)
 /**
  * \brief is address a multicast address, see RFC 4291
  * a is of type uip_ipaddr_t*
@@ -391,8 +408,39 @@ void echo_reply();
    (((a)->u8[11]) == 0x01) &&                  \
    (((a)->u8[12]) == 0xFF))
 
+#define uip_create_solicited_node(a, b)    \
+  (((b)->u8[0]) = 0xFF);                        \
+  (((b)->u8[1]) = 0x02);                        \
+  (((b)->u16[1]) = 0);                          \
+  (((b)->u16[2]) = 0);                          \
+  (((b)->u16[3]) = 0);                          \
+  (((b)->u16[4]) = 0);                          \
+  (((b)->u8[10]) = 0);                          \
+  (((b)->u8[11]) = 0x01);                       \
+  (((b)->u8[12]) = 0xFF);                       \
+  (((b)->u8[13]) = ((a)->u8[13]));              \
+  (((b)->u16[7]) = ((a)->u16[7]))
+
+#define uip_is_addr_linklocal(a)                 \
+  ((a)->u8[0] == 0xfe &&                         \
+   (a)->u8[1] == 0x80)
+
+#define UIP_DEFAULT_PREFIX_LEN 64
+#define uip_create_unspecified(a) uip_ip6addr(a, 0, 0, 0, 0, 0, 0, 0, 0)
+#define uip_ipaddr_prefixcmp(addr1, addr2, length) (memcmp(addr1, addr2, length>>3) == 0)
+#define uip_create_linklocal_prefix(addr) do { \
+    (addr)->u16[0] = UIP_HTONS(0xfe80);            \
+    (addr)->u16[1] = 0;                        \
+    (addr)->u16[2] = 0;                        \
+    (addr)->u16[3] = 0;                        \
+  } while(0)
+
+#define uip_ip6addr_cmp(addr1, addr2) (memcmp(addr1, addr2, sizeof(uip_ip6addr_t)) == 0)
+#define uip_ipaddr_cmp(addr1, addr2) uip_ip6addr_cmp(addr1, addr2)
 #define uip_ipaddr_copy(dest, src) (*(dest) = *(src))
 
+void
+uip_nd6_ns_output(uip_ipaddr_t *src, uip_ipaddr_t *dest, uip_ipaddr_t *tgt);
 /**
  * \brief is address a global multicast address (FFxE::/16),
  * a is of type uip_ip6addr_t*
@@ -411,8 +459,6 @@ void echo_reply();
 #define UIP_ND6_RA_FLAG_ONLINK          0x80
 #define UIP_ND6_RA_FLAG_AUTONOMOUS      0x40
 
-void ns_input();
-void rs_input();
 void echo_request(char *packet);
 
 
@@ -480,22 +526,137 @@ void  ip_hton();
 
 void ip_debug_print(void);
 
-
+/** \brief HOP LIMIT to be used when sending ND messages (255) */
 #define UIP_ND6_HOP_LIMIT               255
+/** \brief INFINITE lifetime */
+#define UIP_ND6_INFINITE_LIFETIME       0xFFFFFFFF
+/** @} */
 
-#define UIP_ND6_NA_LEN                  20
-#define UIP_ND6_NS_LEN                  20
-#define UIP_ND6_RA_LEN                  12
-#define UIP_ND6_RS_LEN                  4
+/** \name RFC 4861 Host constant */
+/** @{ */
+/** \brief Maximum router solicitation delay */
+#ifndef UIP_CONF_ND6_MAX_RTR_SOLICITATION_DELAY
+#define UIP_ND6_MAX_RTR_SOLICITATION_DELAY 1
+#else
+#define UIP_ND6_MAX_RTR_SOLICITATION_DELAY UIP_CONF_ND6_MAX_RTR_SOLICITATION_DELAY
+#endif
+/** \brief Router solicitation interval */
+#ifndef UIP_CONF_ND6_RTR_SOLICITATION_INTERVAL
+#define UIP_ND6_RTR_SOLICITATION_INTERVAL  4
+#else
+#define UIP_ND6_RTR_SOLICITATION_INTERVAL  UIP_CONF_ND6_RTR_SOLICITATION_INTERVAL
+#endif
+/** \brief Maximum router solicitations */
+#ifndef UIP_CONF_ND6_MAX_RTR_SOLICITATIONS
+#define UIP_ND6_MAX_RTR_SOLICITATIONS      3
+#else
+#define UIP_ND6_MAX_RTR_SOLICITATIONS      UIP_CONF_ND6_MAX_RTR_SOLICITATIONS
+#endif
+/** @} */
 
-#define UIP_ND6_OPT_LLAO_LEN           8
+/** \name RFC 4861 Router constants */
+/** @{ */
+#ifndef UIP_CONF_ND6_SEND_RA
+#define UIP_ND6_SEND_RA                     1   /* enable/disable RA sending */
+#else
+#define UIP_ND6_SEND_RA UIP_CONF_ND6_SEND_RA
+#endif
+#ifndef UIP_CONF_ND6_SEND_NS
+#define UIP_ND6_SEND_NS                     1   /* enable/disable NS sending */
+#else
+#define UIP_ND6_SEND_NS UIP_CONF_ND6_SEND_NS
+#endif
+#ifndef UIP_CONF_ND6_SEND_NA
+#define UIP_ND6_SEND_NA                     1   /* enable/disable NA sending */
+#else
+#define UIP_ND6_SEND_NA UIP_CONF_ND6_SEND_NA
+#endif
+#ifndef UIP_CONF_ND6_MAX_RA_INTERVAL
+#define UIP_ND6_MAX_RA_INTERVAL             600
+#else
+#define UIP_ND6_MAX_RA_INTERVAL             UIP_CONF_ND6_MAX_RA_INTERVAL
+#endif
+#ifndef UIP_CONF_ND6_MIN_RA_INTERVAL
+#define UIP_ND6_MIN_RA_INTERVAL             (UIP_ND6_MAX_RA_INTERVAL / 3)
+#else
+#define UIP_ND6_MIN_RA_INTERVAL             UIP_CONF_ND6_MIN_RA_INTERVAL
+#endif
+#define UIP_ND6_M_FLAG                      0
+#define UIP_ND6_O_FLAG                      (UIP_ND6_RA_RDNSS || UIP_ND6_RA_DNSSL)
+#ifndef UIP_CONF_ROUTER_LIFETIME
+#define UIP_ND6_ROUTER_LIFETIME             3 * UIP_ND6_MAX_RA_INTERVAL
+#else
+#define UIP_ND6_ROUTER_LIFETIME             UIP_CONF_ROUTER_LIFETIME
+#endif
 
-/**@{  Pointers to messages just after icmp header */
-#define UIP_ND6_RS_BUF            ((uip_nd6_rs *)&uip_buf[uip_l2_l3_icmp_hdr_len])
-#define UIP_ND6_RA_BUF            ((uip_nd6_ra *)&uip_buf[uip_l2_l3_icmp_hdr_len])
-#define UIP_ND6_NS_BUF            ((uip_nd6_ns *)&uip_buf[uip_l2_l3_icmp_hdr_len])
-#define UIP_ND6_NA_BUF            ((uip_nd6_na *)&uip_buf[uip_l2_l3_icmp_hdr_len])
+#define UIP_ND6_MAX_INITIAL_RA_INTERVAL     16  /*seconds*/
+#define UIP_ND6_MAX_INITIAL_RAS             3   /*transmissions*/
+#ifndef UIP_CONF_ND6_MIN_DELAY_BETWEEN_RAS
+#define UIP_ND6_MIN_DELAY_BETWEEN_RAS       3   /*seconds*/
+#else
+#define UIP_ND6_MIN_DELAY_BETWEEN_RAS       UIP_CONF_ND6_MIN_DELAY_BETWEEN_RAS
+#endif
+//#define UIP_ND6_MAX_RA_DELAY_TIME           0.5 /*seconds*/
+#define UIP_ND6_MAX_RA_DELAY_TIME_MS        500 /*milli seconds*/
+/** @} */
 
+#ifndef UIP_CONF_ND6_DEF_MAXDADNS
+/** \brief Do not try DAD when using EUI-64 as allowed by draft-ietf-6lowpan-nd-15 section 8.2 */
+#if UIP_CONF_LL_802154
+#define UIP_ND6_DEF_MAXDADNS 0
+#else /* UIP_CONF_LL_802154 */
+#define UIP_ND6_DEF_MAXDADNS UIP_ND6_SEND_NS
+#endif /* UIP_CONF_LL_802154 */
+#else /* UIP_CONF_ND6_DEF_MAXDADNS */
+#define UIP_ND6_DEF_MAXDADNS UIP_CONF_ND6_DEF_MAXDADNS
+#endif /* UIP_CONF_ND6_DEF_MAXDADNS */
+
+/** \name RFC 4861 Node constant */
+#define UIP_ND6_MAX_MULTICAST_SOLICIT  3
+
+#ifdef UIP_CONF_ND6_MAX_UNICAST_SOLICIT
+#define UIP_ND6_MAX_UNICAST_SOLICIT    UIP_CONF_ND6_MAX_UNICAST_SOLICIT
+#else /* UIP_CONF_ND6_MAX_UNICAST_SOLICIT */
+#define UIP_ND6_MAX_UNICAST_SOLICIT    3
+#endif /* UIP_CONF_ND6_MAX_UNICAST_SOLICIT */
+
+#ifdef UIP_CONF_ND6_REACHABLE_TIME
+#define UIP_ND6_REACHABLE_TIME         UIP_CONF_ND6_REACHABLE_TIME
+#else
+#define UIP_ND6_REACHABLE_TIME         30000
+#endif
+
+#ifdef UIP_CONF_ND6_RETRANS_TIMER
+#define UIP_ND6_RETRANS_TIMER          UIP_CONF_ND6_RETRANS_TIMER
+#else
+#define UIP_ND6_RETRANS_TIMER          1000
+#endif
+
+#define UIP_ND6_DELAY_FIRST_PROBE_TIME 5
+#define UIP_ND6_MIN_RANDOM_FACTOR(x)   (x / 2)
+#define UIP_ND6_MAX_RANDOM_FACTOR(x)   ((x) + (x) / 2)
+/** @} */
+
+
+/** \name RFC 6106 RA DNS Options Constants  */
+/** @{ */
+#ifndef UIP_CONF_ND6_RA_RDNSS
+#define UIP_ND6_RA_RDNSS                0
+#else
+#define UIP_ND6_RA_RDNSS                UIP_CONF_ND6_RA_RDNSS
+#endif
+
+#ifndef UIP_CONF_ND6_RA_DNSSL
+#define UIP_ND6_RA_DNSSL                0
+#else
+#error Not implemented
+#define UIP_ND6_RA_DNSSL                UIP_CONF_ND6_RA_DNSSL
+#endif
+/** @} */
+
+
+/** \name ND6 option types */
+/** @{ */
 #define UIP_ND6_OPT_SLLAO               1
 #define UIP_ND6_OPT_TLLAO               2
 #define UIP_ND6_OPT_PREFIX_INFO         3
@@ -503,13 +664,60 @@ void ip_debug_print(void);
 #define UIP_ND6_OPT_MTU                 5
 #define UIP_ND6_OPT_RDNSS               25
 #define UIP_ND6_OPT_DNSSL               31
-
+/** @} */
 
 /** \name ND6 option types */
 /** @{ */
 #define UIP_ND6_OPT_TYPE_OFFSET         0
 #define UIP_ND6_OPT_LEN_OFFSET          1
 #define UIP_ND6_OPT_DATA_OFFSET         2
+
+/** \name ND6 message length (excluding options) */
+/** @{ */
+#define UIP_ND6_NA_LEN                  20
+#define UIP_ND6_NS_LEN                  20
+#define UIP_ND6_RA_LEN                  12
+#define UIP_ND6_RS_LEN                  4
+/** @} */
+
+
+/** \name ND6 option length in bytes */
+/** @{ */
+#define UIP_ND6_OPT_HDR_LEN            2
+#define UIP_ND6_OPT_PREFIX_INFO_LEN    32
+#define UIP_ND6_OPT_MTU_LEN            8
+#define UIP_ND6_OPT_RDNSS_LEN          1
+#define UIP_ND6_OPT_DNSSL_LEN          1
+
+
+/* Length of TLLAO and SLLAO options, it is L2 dependant */
+#if UIP_CONF_LL_802154
+/* If the interface is 802.15.4. For now we use only long addresses */
+#define UIP_ND6_OPT_SHORT_LLAO_LEN     8
+#define UIP_ND6_OPT_LONG_LLAO_LEN      16
+/** \brief length of a ND6 LLAO option for 802.15.4 */
+#define UIP_ND6_OPT_LLAO_LEN UIP_ND6_OPT_LONG_LLAO_LEN
+#else /*UIP_CONF_LL_802154*/
+#if UIP_CONF_LL_80211
+/* If the interface is 802.11 */
+/** \brief length of a ND6 LLAO option for 802.11 */
+#define UIP_ND6_OPT_LLAO_LEN           8
+#else /*UIP_CONF_LL_80211*/
+/** \brief length of a ND6 LLAO option for default L2 type (e.g. Ethernet) */
+#define UIP_ND6_OPT_LLAO_LEN           8
+#endif /*UIP_CONF_LL_80211*/
+#endif /*UIP_CONF_LL_802154*/
+/** @} */
+
+
+/** \name Neighbor Advertisement flags masks */
+/** @{ */
+#define UIP_ND6_NA_FLAG_ROUTER          0x80
+#define UIP_ND6_NA_FLAG_SOLICITED       0x40
+#define UIP_ND6_NA_FLAG_OVERRIDE        0x20
+#define UIP_ND6_RA_FLAG_ONLINK          0x80
+#define UIP_ND6_RA_FLAG_AUTONOMOUS      0x40
+/** @} */
 
 
 #define IP_HLEN 40
@@ -533,9 +741,6 @@ struct uip_eth_hdr {
 
 
 static uip_ipaddr_t tmp_ipaddr;
-
-static int UIP_CONF_ROUTER = 0;
-
 void echo_request_input(void);
 
 

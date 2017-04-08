@@ -1,5 +1,5 @@
 /* xinu.h - include all system header files */
-
+#include <router-conf.h>
 #include <kernel.h>
 #include <conf.h>
 #include <process.h>
@@ -40,9 +40,16 @@
 #include <quark_irq.h>
 #include <multiboot.h>
 #include <stdio.h>
+#include <mysignal.h>
+#include <myqueue.h>
+#include <alarmqueue.h>
 #include <list.h>
 #include <string.h>
 #include <uip.h>
-#include <uip_ds.h>
 #include <icmp6.h>
+#include <cc.h>
+#include <uip_ds.h>
 #include <uip_nbr.h>
+#include <memb.h>
+#include <uip_route.h>
+

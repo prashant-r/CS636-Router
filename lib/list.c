@@ -1,386 +1,283 @@
 #include <xinu.h>
 
+#define NULL 0
 
-void list_create(list_t list)
-{
-    *list = listCreate();
-}
-void list_release(list_t list)
-{
-    listRelease(*list);
-}
-void list_pop(list_t list)
-{
-    struct list * l = (struct list *) *list;
-    listNode * tail = l->tail;
-    listDelNode(*list, tail);
-}
-void list_push(list_t list, void * item)
-{
-    listAddNodeTail(*list, item);
-}
-void list_add_node_head(list_t list, void *value)
-{
-    listAddNodeHead(*list, value);
-}
-void list_add(list_t list, void *value)
-{
-    listAddNodeTail(*list, value);
-}
-void list_del_node(list_t list, listNode * node)
-{
-    listDelNode(*list, node);
-}
-void list_insert(list_t list, void * prevItem, void * newitem)
-{
-    listInsertNode(*list, (listNode *) prevItem, newitem, 1);
-}
-void list_duplicate(list_t dest, list_t src)
-{
-    *dest = listDup(*src);
-}
-int  list_length(list_t list)
-{
-    struct list * l = *list;
-    return listLength(l);
-}
-listIter * list_iterator(list_t list, int direction)
-{
-    struct list * l = *list;
-    return listGetIterator(l, direction);
-}
-listNode * list_next(listIter * iter)
-{
-    return listNext(iter);
-}
-void list_release_iterator(listIter * iter)
-{
-    listReleaseIterator(iter);
-}
-listNode * list_search_key(list_t list, void *key)
-{
-    struct list *l = *list;
-    return listSearchKey(l, key);
-}
-listNode * list_index_at(list_t list, long index)
-{
-    struct list *l = *list;
-    return listIndex(l , index);
-}
-void list_rewind(list_t list, listIter *li)
-{
-    struct list * l = *list;
-    listRewind(l, li);
-}
-void list_rewind_tail(list_t list, listIter * li)
-{
-    struct list * l = *list;
-    listRewindTail(l, li);
-}
-void list_rotate(list_t list)
-{
-    struct list * l = *list;
-    listRotate(l);
-}
+struct list {
+  struct list *next;
+};
 
-
-/* Create a new list. The created list can be freed with
- * AlFreeList(), but private value of every node need to be freed
- * by the user before to call AlFreeList().
+/*---------------------------------------------------------------------------*/
+/**
+ * Initialize a list.
  *
- * On error, NULL is returned. Otherwise the pointer to the new list. */
-list *listCreate(void)
+ * This function initalizes a list. The list will be empty after this
+ * function has been called.
+ *
+ * \param list The list to be initialized.
+ */
+void
+list_init(list_t list)
 {
-    struct list *list;
-
-    if ((list = (struct list *)getmem(sizeof(*list))) == NULL)
-        return NULL;
-    list->head = list->tail = NULL;
-    list->len = 0;
-    list->dup = NULL;
-    list->free = NULL;
-    list->match = NULL;
-    return list;
+  *list = NULL;
 }
-
-/* Free the whole list.
+/*---------------------------------------------------------------------------*/
+/**
+ * Get a pointer to the first element of a list.
  *
- * This function can't fail. */
-void listRelease(list *list)
+ * This function returns a pointer to the first element of the
+ * list. The element will \b not be removed from the list.
+ *
+ * \param list The list.
+ * \return A pointer to the first element on the list.
+ *
+ * \sa list_tail()
+ */
+void *
+list_head(list_t list)
 {
-    unsigned long len;
-    listNode *current, *next;
-
-    current = list->head;
-    len = list->len;
-    while(len--) {
-        next = current->next;
-        if (list->free) list->free(current->value);
-        freemem((char *)current, sizeof(*current));
-        current = next;
-    }
-    freemem((char *)list, sizeof(*list));
+  return *list;
 }
-
-/* Add a new node to the list, to head, containing the specified 'value'
- * pointer as value.
+/*---------------------------------------------------------------------------*/
+/**
+ * Duplicate a list.
  *
- * On error, NULL is returned and no operation is performed (i.e. the
- * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
-list *listAddNodeHead(list *list, void *value)
+ * This function duplicates a list by copying the list reference, but
+ * not the elements.
+ *
+ * \note This function does \b not copy the elements of the list, but
+ * merely duplicates the pointer to the first element of the list.
+ *
+ * \param dest The destination list.
+ * \param src The source list.
+ */
+void
+list_copy(list_t dest, list_t src)
 {
-    listNode *node;
-
-    if ((node = (listNode *) getmem(sizeof(*node))) == NULL)
-        return NULL;
-    node->value = value;
-    if (list->len == 0) {
-        list->head = list->tail = node;
-        node->prev = node->next = NULL;
-    } else {
-        node->prev = NULL;
-        node->next = list->head;
-        list->head->prev = node;
-        list->head = node;
-    }
-    list->len++;
-    return list;
+  *dest = *src;
 }
-
-/* Add a new node to the list, to tail, containing the specified 'value'
- * pointer as value.
+/*---------------------------------------------------------------------------*/
+/**
+ * Get the tail of a list.
  *
- * On error, NULL is returned and no operation is performed (i.e. the
- * list remains unaltered).
- * On success the 'list' pointer you pass to the function is returned. */
-list *listAddNodeTail(list *list, void *value)
+ * This function returns a pointer to the elements following the first
+ * element of a list. No elements are removed by this function.
+ *
+ * \param list The list
+ * \return A pointer to the element after the first element on the list.
+ *
+ * \sa list_head()
+ */
+void *
+list_tail(list_t list)
 {
-    listNode *node;
-
-    if ((node = (listNode *) getmem(sizeof(*node))) == NULL)
-        return NULL;
-    node->value = value;
-    if (list->len == 0) {
-        list->head = list->tail = node;
-        node->prev = node->next = NULL;
-    } else {
-        node->prev = list->tail;
-        node->next = NULL;
-        list->tail->next = node;
-        list->tail = node;
-    }
-    list->len++;
-    return list;
-}
-
-list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
-    listNode *node;
-
-    if ((node = (listNode *)getmem(sizeof(*node))) == NULL)
-        return NULL;
-    node->value = value;
-    if (after) {
-        node->prev = old_node;
-        node->next = old_node->next;
-        if (list->tail == old_node) {
-            list->tail = node;
-        }
-    } else {
-        node->next = old_node;
-        node->prev = old_node->prev;
-        if (list->head == old_node) {
-            list->head = node;
-        }
-    }
-    if (node->prev != NULL) {
-        node->prev->next = node;
-    }
-    if (node->next != NULL) {
-        node->next->prev = node;
-    }
-    list->len++;
-    return list;
-}
-
-/* Remove the specified node from the specified list.
- * It's up to the caller to free the private value of the node.
- *
- * This function can't fail. */
-void listDelNode(list *list, listNode *node)
-{
-    if (node->prev)
-        node->prev->next = node->next;
-    else
-        list->head = node->next;
-    if (node->next)
-        node->next->prev = node->prev;
-    else
-        list->tail = node->prev;
-    if (list->free) list->free(node->value);
-    freemem((char *)node, sizeof(*node));
-    list->len--;
-}
-
-/* Returns a list iterator 'iter'. After the initialization every
- * call to listNext() will return the next element of the list.
- *
- * This function can't fail. */
-listIter *listGetIterator(list *list, int direction)
-{
-    listIter *iter;
-
-    if ((iter = (listIter * )getmem(sizeof(*iter))) == NULL) return NULL;
-    if (direction == FORWARD)
-        iter->next = list->head;
-    else
-        iter->next = list->tail;
-    iter->direction = direction;
-    return iter;
-}
-
-/* Release the iterator memory */
-void listReleaseIterator(listIter *iter) {
-    freemem((char *)iter, sizeof(listIter));
-}
-
-/* Create an iterator in the list private iterator structure */
-void listRewind(list *list, listIter *li) {
-    li->next = list->head;
-    li->direction = FORWARD;
-}
-
-void listRewindTail(list *list, listIter *li) {
-    li->next = list->tail;
-    li->direction = BACKWARD;
-}
-
-/* Return the next element of an iterator.
- * It's valid to remove the currently returned element using
- * listDelNode(), but not to remove other elements.
- *
- * The function returns a pointer to the next element of the list,
- * or NULL if there are no more elements, so the classical usage patter
- * is:
- *
- * iter = listGetIterator(list,<direction>);
- * while ((node = listNext(iter)) != NULL) {
- *     doSomethingWith(listNodeValue(node));
- * }
- *
- * */
-listNode *listNext(listIter *iter)
-{
-    listNode *current = iter->next;
-
-    if (current != NULL) {
-        if (iter->direction == FORWARD)
-            iter->next = current->next;
-        else
-            iter->next = current->prev;
-    }
-    return current;
-}
-
-/* Duplicate the whole list. On out of memory NULL is returned.
- * On success a copy of the original list is returned.
- *
- * The 'Dup' method set with listSetDupMethod() function is used
- * to copy the node value. Otherwise the same pointer value of
- * the original node is used as value of the copied node.
- *
- * The original list both on success or error is never modified. */
-list *listDup(list *orig)
-{
-    list *copy;
-    listIter iter;
-    listNode *node;
-
-    if ((copy = listCreate()) == NULL)
-        return NULL;
-    copy->dup = orig->dup;
-    copy->free = orig->free;
-    copy->match = orig->match;
-    listRewind(orig, &iter);
-    while((node = listNext(&iter)) != NULL) {
-        void *value;
-
-        if (copy->dup) {
-            value = copy->dup(node->value);
-            if (value == NULL) {
-                listRelease(copy);
-                return NULL;
-            }
-        } else
-            value = node->value;
-        if (listAddNodeTail(copy, value) == NULL) {
-            listRelease(copy);
-            return NULL;
-        }
-    }
-    return copy;
-}
-
-/* Search the list for a node matching a given key.
- * The match is performed using the 'match' method
- * set with listSetMatchMethod(). If no 'match' method
- * is set, the 'value' pointer of every node is directly
- * compared with the 'key' pointer.
- *
- * On success the first matching node pointer is returned
- * (search starts from head). If no matching node exists
- * NULL is returned. */
-listNode *listSearchKey(list *list, void *key)
-{
-    listIter iter;
-    listNode *node;
-
-    listRewind(list, &iter);
-    while((node = listNext(&iter)) != NULL) {
-        if (list->match) {
-            if (list->match(node->value, key)) {
-                return node;
-            }
-        } else {
-            if (key == node->value) {
-                return node;
-            }
-        }
-    }
+  struct list *l;
+  
+  if(*list == NULL) {
     return NULL;
+  }
+  
+  for(l = *list; l->next != NULL; l = l->next);
+  
+  return l;
 }
+/*---------------------------------------------------------------------------*/
+/**
+ * Add an item at the end of a list.
+ *
+ * This function adds an item to the end of the list.
+ *
+ * \param list The list.
+ * \param item A pointer to the item to be added.
+ *
+ * \sa list_push()
+ *
+ */
+void
+list_add(list_t list, void *item)
+{
+  struct list *l;
 
-/* Return the element at the specified zero-based index
- * where 0 is the head, 1 is the element next to head
- * and so on. Negative integers are used in order to count
- * from the tail, -1 is the last element, -2 the penultimate
- * and so on. If the index is out of range NULL is returned. */
-listNode *listIndex(list *list, long index) {
-    listNode *n;
+  /* Make sure not to add the same element twice */
+  list_remove(list, item);
 
-    if (index < 0) {
-        index = (-index)-1;
-        n = list->tail;
-        while(index-- && n) n = n->prev;
-    } else {
-        n = list->head;
-        while(index-- && n) n = n->next;
+  ((struct list *)item)->next = NULL;
+  
+  l = list_tail(list);
+
+  if(l == NULL) {
+    *list = item;
+  } else {
+    l->next = item;
+  }
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * Add an item to the start of the list.
+ */
+void
+list_push(list_t list, void *item)
+{
+  /*  struct list *l;*/
+
+  /* Make sure not to add the same element twice */
+  list_remove(list, item);
+
+  ((struct list *)item)->next = *list;
+  *list = item;
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * Remove the last object on the list.
+ *
+ * This function removes the last object on the list and returns it.
+ *
+ * \param list The list
+ * \return The removed object
+ *
+ */
+void *
+list_chop(list_t list)
+{
+  struct list *l, *r;
+  
+  if(*list == NULL) {
+    return NULL;
+  }
+  if(((struct list *)*list)->next == NULL) {
+    l = *list;
+    *list = NULL;
+    return l;
+  }
+  
+  for(l = *list; l->next->next != NULL; l = l->next);
+
+  r = l->next;
+  l->next = NULL;
+  
+  return r;
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * Remove the first object on a list.
+ *
+ * This function removes the first object on the list and returns a
+ * pointer to it.
+ *
+ * \param list The list.
+ * \return Pointer to the removed element of list.
+ */
+/*---------------------------------------------------------------------------*/
+void *
+list_pop(list_t list)
+{
+  struct list *l;
+  l = *list;
+  if(*list != NULL) {
+    *list = ((struct list *)*list)->next;
+  }
+
+  return l;
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * Remove a specific element from a list.
+ *
+ * This function removes a specified element from the list.
+ *
+ * \param list The list.
+ * \param item The item that is to be removed from the list.
+ *
+ */
+/*---------------------------------------------------------------------------*/
+void
+list_remove(list_t list, void *item)
+{
+  struct list *l, *r;
+  
+  if(*list == NULL) {
+    return;
+  }
+  
+  r = NULL;
+  for(l = *list; l != NULL; l = l->next) {
+    if(l == item) {
+      if(r == NULL) {
+    /* First on list */
+    *list = l->next;
+      } else {
+    /* Not first on list */
+    r->next = l->next;
+      }
+      l->next = NULL;
+      return;
     }
-    return n;
+    r = l;
+  }
 }
+/*---------------------------------------------------------------------------*/
+/**
+ * Get the length of a list.
+ *
+ * This function counts the number of elements on a specified list.
+ *
+ * \param list The list.
+ * \return The length of the list.
+ */
+/*---------------------------------------------------------------------------*/
+int
+list_length(list_t list)
+{
+  struct list *l;
+  int n = 0;
 
-/* Rotate the list removing the tail node and inserting it to the head. */
-void listRotate(list *list) {
-    listNode *tail = list->tail;
+  for(l = *list; l != NULL; l = l->next) {
+    ++n;
+  }
 
-    if (listLength(list) <= 1) return;
-
-    /* Detach current tail */
-    list->tail = tail->prev;
-    list->tail->next = NULL;
-    /* Move it as head */
-    list->head->prev = tail;
-    tail->prev = NULL;
-    tail->next = list->head;
-    list->head = tail;
+  return n;
 }
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      Insert an item after a specified item on the list
+ * \param list The list
+ * \param previtem The item after which the new item should be inserted
+ * \param newitem  The new item that is to be inserted
+ * \author     Adam Dunkels
+ *
+ *             This function inserts an item right after a specified
+ *             item on the list. This function is useful when using
+ *             the list module to ordered lists.
+ *
+ *             If previtem is NULL, the new item is placed at the
+ *             start of the list.
+ *
+ */
+void
+list_insert(list_t list, void *previtem, void *newitem)
+{
+  if(previtem == NULL) {
+    list_push(list, newitem);
+  } else {
+  
+    ((struct list *)newitem)->next = ((struct list *)previtem)->next;
+    ((struct list *)previtem)->next = newitem;
+  }
+}
+/*---------------------------------------------------------------------------*/
+/**
+ * \brief      Get the next item following this item
+ * \param item A list item
+ * \returns    A next item on the list
+ *
+ *             This function takes a list item and returns the next
+ *             item on the list, or NULL if there are no more items on
+ *             the list. This function is used when iterating through
+ *             lists.
+ */
+void *
+list_item_next(void *item)
+{
+  return item == NULL? NULL: ((struct list *)item)->next;
+}
+/*---------------------------------------------------------------------------*/
+/** @} */
