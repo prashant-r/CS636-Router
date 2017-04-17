@@ -7,7 +7,7 @@ void create_ethernet__packet(void);
 void uip_ds6_send_rs(void)
 {
   #if !UIP_CONF_ROUTER
-	printf("send rs\n");
+	PRINTF("send rs\n");
 	uip_buf = (unsigned char *) (&createPacket);
   uip_nd6_rs_output();
   ip_hton();
@@ -21,11 +21,11 @@ void uip_ds6_send_rs(void)
 
 void create_ethernet__packet()
 {
-    memcpy(&BUF->dest, &macbcast, UIP_LLADDR_LEN);
     control(ETHER0, ETH_CTRL_GET_MAC, (int32) &uip_lladdr, 0);
-	memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
-	BUF->type = 0x086DD;
-	uip_len += sizeof(struct uip_eth_hdr);
+    memcpy(&BUF->dest, &macbcast, UIP_LLADDR_LEN);
+    memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
+	  BUF->type = 0x086DD;
+	  uip_len += sizeof(struct uip_eth_hdr);
 }
 
 
@@ -55,12 +55,14 @@ uint8_t uip_ds6_netif_addr_list_offset;
 
 /* "full" (as opposed to pointer) ip address used in this file,  */
 static uip_ipaddr_t loc_fipaddr;
+static uip_ipaddr_t global_ipaddr;
 
 /* Pointers used in this file */
 static uip_ds6_addr_t *locaddr;
 static uip_ds6_maddr_t *locmaddr;
 #if UIP_DS6_AADDR_NB
 static uip_ds6_aaddr_t *locaaddr;
+
 #endif /* UIP_DS6_AADDR_NB */
 static uip_ds6_prefix_t *locprefix;
 
@@ -90,16 +92,24 @@ uip_ds6_init(void)
 
   //Create link local address, prefix, multicast addresses, anycast addresses 
   uip_create_linklocal_prefix(&loc_fipaddr);
+  uip_create_global_prefix(&global_ipaddr);
 #if UIP_CONF_ROUTER
   uip_ds6_prefix_add(&loc_fipaddr, UIP_DEFAULT_PREFIX_LEN, 0, 0, 0, 0);
+  uip_ds6_prefix_add(&global_ipaddr, UIP_DEFAULT_PREFIX_LEN, 0, 1, 0, 0);
+  uip_ds6_set_addr_iid(&global_ipaddr, &uip_lladdr);
+  uip_ds6_addr_add(&global_ipaddr, 0, ADDR_AUTOCONF);
 #else /* UIP_CONF_ROUTER */
+  uip_create_linklocal_prefix(&loc_fipaddr);
   uip_ds6_prefix_add(&loc_fipaddr, UIP_DEFAULT_PREFIX_LEN, 0);
 #endif /* UIP_CONF_ROUTER */
+  uip_create_linklocal_prefix(&loc_fipaddr);
   uip_ds6_set_addr_iid(&loc_fipaddr, &uip_lladdr);
   uip_ds6_addr_add(&loc_fipaddr, 0, ADDR_AUTOCONF);
-
+  KPRINTF("Local fip addr \n");
+  KPRINT6ADDR(&loc_fipaddr);
   uip_create_linklocal_allnodes_mcast(&loc_fipaddr);
   uip_ds6_maddr_add(&loc_fipaddr);
+
 
 
 #if UIP_CONF_ROUTER
@@ -133,57 +143,47 @@ void
 uip_ds6_periodic(void)
 {
 
-//   /* Periodic processing on unicast addresses */
-//   for(locaddr = uip_ds6_if.addr_list;
-//       locaddr < uip_ds6_if.addr_list + UIP_DS6_ADDR_NB; locaddr++) {
-//     if(locaddr->isused) {
-//       if((!locaddr->isinfinite) && (stimer_expired(&locaddr->vlifetime))) {
-//         uip_ds6_addr_rm(locaddr);
-// #if UIP_ND6_DEF_MAXDADNS > 0
-//       } else if((locaddr->state == ADDR_TENTATIVE)
-//                 && (locaddr->dadnscount <= uip_ds6_if.maxdadns)
-//                 && (timer_expired(&locaddr->dadtimer))
-//                 && (uip_len == 0)) {
-//         uip_ds6_dad(locaddr);
-// #endif /* UIP_ND6_DEF_MAXDADNS > 0 */
-//       }
-//     }
-//   }
+  /* Periodic processing on unicast addresses */
+  for(locaddr = uip_ds6_if.addr_list;
+      locaddr < uip_ds6_if.addr_list + UIP_DS6_ADDR_NB; locaddr++) {
+    if(locaddr->isused) {
+      if((!locaddr->isinfinite)) {
+        uip_ds6_addr_rm(locaddr);
+#if UIP_ND6_DEF_MAXDADNS > 0
+      } else if((locaddr->state == ADDR_TENTATIVE)
+                && (locaddr->dadnscount <= uip_ds6_if.maxdadns)
+                && (timer_expired(&locaddr->dadtimer))
+                && (uip_len == 0)) {
+        uip_ds6_dad(locaddr);
+#endif /* UIP_ND6_DEF_MAXDADNS > 0 */
+      }
+    }
+  }
 
-//   /* Periodic processing on default routers */
-//   uip_ds6_defrt_periodic();
-//     for(locdefrt = uip_ds6_defrt_list;
-//       locdefrt < uip_ds6_defrt_list + UIP_DS6_DEFRT_NB; locdefrt++) {
-//     if((locdefrt->isused) && (!locdefrt->isinfinite) &&
-//        (stimer_expired(&(locdefrt->lifetime)))) {
-//       uip_ds6_defrt_rm(locdefrt);
-//     }
-//     }
+  /* Periodic processing on default routers */
+  uip_ds6_defrt_periodic();
 
-// #if !UIP_CONF_ROUTER
-//   /* Periodic processing on prefixes */
-//   for(locprefix = uip_ds6_prefix_list;
-//       locprefix < uip_ds6_prefix_list + UIP_DS6_PREFIX_NB;
-//       locprefix++) {
-//     if(locprefix->isused && !locprefix->isinfinite
-//        && stimer_expired(&(locprefix->vlifetime))) {
-//       uip_ds6_prefix_rm(locprefix);
-//     }
-//   }
-// #endif /* !UIP_CONF_ROUTER */
+#if !UIP_CONF_ROUTER
+  /* Periodic processing on prefixes */
+  for(locprefix = uip_ds6_prefix_list;
+      locprefix < uip_ds6_prefix_list + UIP_DS6_PREFIX_NB;
+      locprefix++) {
+    if(locprefix->isused && !locprefix->isinfinite) {
+      uip_ds6_prefix_rm(locprefix);
+    }
+  }
+#endif /* !UIP_CONF_ROUTER */
+#if UIP_ND6_SEND_NS
+  uip_ds6_neighbor_periodic();
+#endif /* UIP_ND6_SEND_NS */
 
-// #if UIP_ND6_SEND_NS
-//   uip_ds6_neighbor_periodic();
-// #endif /* UIP_ND6_SEND_NS */
-
-// #if UIP_CONF_ROUTER && UIP_ND6_SEND_RA
-//   /* Periodic RA sending */
-//   if(stimer_expired(&uip_ds6_timer_ra) && (uip_len == 0)) {
-//     uip_ds6_send_ra_periodic();
-//   }
-// #endif /* UIP_CONF_ROUTER && UIP_ND6_SEND_RA */
-//   etimer_reset(&uip_ds6_timer_periodic);
-//   return;
+#if UIP_CONF_ROUTER && UIP_ND6_SEND_RA
+  /* Periodic RA sending */
+  if(uip_len == 0) {
+    uip_ds6_send_ra_periodic();
+  }
+#endif /* UIP_CONF_ROUTER && UIP_ND6_SEND_RA */
+return;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -299,6 +299,7 @@ uip_ds6_is_addr_onlink(uip_ipaddr_t *ipaddr)
 {
   for(locprefix = uip_ds6_prefix_list;
       locprefix < uip_ds6_prefix_list + UIP_DS6_PREFIX_NB; locprefix++) {
+    PRINT6ADDR(&locprefix->ipaddr);
     if(locprefix->isused &&
        uip_ipaddr_prefixcmp(&locprefix->ipaddr, ipaddr, locprefix->length)) {
       return 1;
@@ -376,12 +377,22 @@ uip_ds6_addr_lookup(uip_ipaddr_t *ipaddr)
  * (TENTATIVE, PREFERRED, DEPRECATED)
  */
 uip_ds6_addr_t *
-uip_ds6_get_link_local(char state)
+uip_ds6_get_link_local(char state, char type)
 {
+  PRINTF("Came here ");
   for(locaddr = uip_ds6_if.addr_list;
       locaddr < uip_ds6_if.addr_list + UIP_DS6_ADDR_NB; locaddr++) {
-    if(locaddr->isused && (state == -1 || locaddr->state == state)
+    PRINTF("Now what ? ");
+    PRINTF("%d , ", locaddr->isused);
+    PRINTF("%d , ",locaddr->state);
+    PRINTF("%d, ", locaddr->type == type);
+    PRINTF("%d , ", uip_is_addr_linklocal(&locaddr->ipaddr));
+    PRINT6ADDR(&locaddr->ipaddr);
+    PRINTF("\n");
+    if(locaddr->isused && (state == -1 || locaddr->state == state) && (type == -1 || locaddr->type == type)
        && (uip_is_addr_linklocal(&locaddr->ipaddr))) {
+      PRINTF("In for loop\n");
+      PRINT6ADDR(&locaddr->ipaddr);
       return locaddr;
     }
   }
@@ -514,9 +525,9 @@ uip_ds6_select_src(uip_ipaddr_t *src, uip_ipaddr_t *dst)
     matchaddr = uip_ds6_get_global(ADDR_PREFERRED);
 #endif
   } else {
-    matchaddr = uip_ds6_get_link_local(ADDR_PREFERRED);
+    matchaddr = uip_ds6_get_link_local(ADDR_PREFERRED, ADDR_AUTOCONF);
   }
-
+  matchaddr = uip_ds6_get_link_local(ADDR_PREFERRED, ADDR_AUTOCONF);
   /* use the :: (unspecified address) as source if no match found */
   if(matchaddr == NULL) {
     uip_create_unspecified(src);

@@ -5,7 +5,6 @@
 #include <xinu.h>
 #include <string.h>
 
-#define INITSIZE 20
 extern	void	start(void);	/* Start of Xinu code			*/
 extern	void	*_end;		/* End of Xinu code			*/
 
@@ -16,8 +15,9 @@ static	void sysinit(); 	/* Internal system initialization	*/
 extern	void meminit(void);	/* Initializes the free memory list	*/
 local	process startup(void);	/* Process to finish startup tasks	*/
 
+const int32 MAX_INT32 = 0x7FFFFFFF;
+const uint32 MAX_UINT32 = 0xFFFFFFFF;
 /* Declarations of major kernel variables */
-qid16 queueArr[INITSIZE];
 
 struct	procent	proctab[NPROC];	/* Process table			*/
 struct	sentry	semtab[NSEM];	/* Semaphore table			*/
@@ -61,7 +61,7 @@ void	nulluser()
 						memptr = memptr->mnext) {
 		free_mem += memptr->mlength;
 	}
-	kprintf("%10d bytes of free memory. The Free list:\n", free_mem);
+	kprintf("%10d bytes of free memory.  Free list:\n", free_mem);
 	for (memptr=memlist.mnext; memptr!=NULL;memptr = memptr->mnext) {
 	    kprintf("           [0x%08X to 0x%08X]\n",
 		(uint32)memptr, ((uint32)memptr) + memptr->mlength - 1);
@@ -82,8 +82,8 @@ void	nulluser()
 
 	/* Create a process to finish startup and start main */
 
-	//resume(create((void *)startup, INITSTK, INITPRIO,
-	//				"Startup process", 0, NULL));
+	resume(create((void *)startup, INITSTK, INITPRIO,
+					"Startup process", 0, NULL));
 
 	/* Become the Null process (i.e., guarantee that the CPU has	*/
 	/*  something to run when no other process is ready to execute)	*/
@@ -149,7 +149,6 @@ local process	startup(void)
  */
 static	void	sysinit()
 {
-	kprintf("Now in sysinit()\n");
 	int32	i;
 	struct	procent	*prptr;		/* Ptr to process table entry	*/
 	struct	sentry	*semptr;	/* Ptr to semaphore table entry	*/
@@ -158,12 +157,17 @@ static	void	sysinit()
 
 	platinit();
 
+	/* Reset the console */
+
+	kprintf(CONSOLE_RESET);
+	kprintf("\n%s\n\n", VERSION);
+
 	/* Initialize the interrupt vectors */
 
 	initevec();
-
+	
 	/* Initialize free memory list */
-
+	
 	meminit();
 
 	/* Initialize system variables */
@@ -184,7 +188,7 @@ static	void	sysinit()
 		prptr->prname[0] = NULLCH;
 		prptr->prstkbase = NULL;
 		prptr->prprio = 0;
-		prptr->prcpumsec = MAX_UINT32;
+		prptr->prcpumsec = 0;
 		// LAB 4Q3 Initalize the following
 		prptr->callback = NULL;
 		prptr->alarmfunc= NULL;
@@ -212,9 +216,8 @@ static	void	sysinit()
 	prptr->alarmTimeOut = FALSE;
 	prptr->xcpufunc = NULL;
 	prptr->xcputime =0;
-
 	currpid = NULLPROC;
-
+	
 	/* Initialize semaphores */
 
 	for (i = 0; i < NSEM; i++) {
@@ -224,7 +227,6 @@ static	void	sysinit()
 		semptr->squeue = newqueue();
 	}
 
-	printf("Mull proc legoo\n");
 	/* Initialize buffer pools */
 
 	bufinit();
@@ -235,17 +237,11 @@ static	void	sysinit()
 
 	/* Initialize the real time clock */
 
-
-	/* Display the dispatch table */
-	int row = 0;
-	// Initialize the queue array structure that maintains the queue at each level
-	for (row =0 ; row <20; row++)
-		queueArr[row] = newqueue();
 	clkinit();
+
 	for (i = 0; i < NDEVS; i++) {
 		init(i);
 	}
-	printf("Made it here\n");
 	return;
 }
 

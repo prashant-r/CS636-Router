@@ -486,6 +486,8 @@ extern	syscall	signaln(sid32, int32);
 extern	syscall	sleepms(int32);
 extern	syscall	sleep(int32);
 
+extern char * strtok(char *s , const char *delim);
+extern long strtol(const char *nptr,char **endptr,register int base);
 /* in file start.S */
 extern	int32	inb(int32);
 extern	int32	inw(int32);
@@ -596,6 +598,14 @@ extern	pid32	alarmgetfirst(qid16);
 extern	pid32	alarmgetlast(qid16);
 extern	pid32	alarmgetitem(pid32);
 extern  int32   alarmcontains(qid16 q, pid32 pid);
+extern  pid32	alarmenqueue(pid32	pid,qid16 q	);
+extern  pid32	alarmdequeue(qid16 q);
+extern  status	alarminsertd(pid32 pid,qid16 q,int32 key);
+extern  pid32   alarmprintQueue(qid16 q);
+extern  qid16	alarmnewqueue(void);
+
+/* in file alarmwakeup.c */
+extern void alarmwakeup(void);
 
 extern syscall registercbsig(uint16 asig, int (*func)(void),uint32 optarg);
 
@@ -608,3 +618,8 @@ extern void myalarmhandler();
 extern void myxcpuhandler();
 
 extern qid16 queueArr[];
+
+extern void timer_set(void (*func)(void), int time, int periodic);
+extern void print_network_status();
+extern void schedule_periodic(void (*func)(void), int time);
+extern void schedule_once(void (*func)(void),int time);

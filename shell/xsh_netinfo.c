@@ -39,5 +39,6 @@ shellcmd xsh_netinfo(int nargs, char *args[]) {
 			ifptr->if_macbcast[4] &0xff, ifptr->if_macbcast[5] &0xff);
 	}
 	printf("\n");
+	print_network_status();
 	return 0;
 }

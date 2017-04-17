@@ -4,6 +4,9 @@
 
 #define	MAXSECONDS	4294967		/* Max seconds per 32-bit msec	*/
 
+uint32  clktimemsec; /*milliseconds */
+qid16 alarmq; /* Queue of the alarm pending processes */
+
 /*------------------------------------------------------------------------
  *  alarm  -  LAB 4Q3 Delay the calling process's callback function invocation n seconds
  *------------------------------------------------------------------------

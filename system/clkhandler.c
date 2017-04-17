@@ -2,27 +2,27 @@
 
 #include <xinu.h>
 
-/*
- * define constant for max for clktimemsec counter
- */
-const uint32 MAX_UINT32 = 0xFFFFFFFF;
 /*------------------------------------------------------------------------
  * clkhandler - high level clock interrupt handler
  *------------------------------------------------------------------------
  */
-void	clkhandler(int32	arg	/* Interrupt handler argument	*/)
+void	clkhandler(
+		int32	arg	/* Interrupt handler argument	*/
+		)
 {
 	static	uint32	count1000 = 1000;	/* Count to 1000 ms	*/
 
-	// increment the clktimemsec since it has
+	if(!(hpet->gis & HPET_GIS_T0)) {
+		return;
+	}
 	clktimemsec++;
 
-	// LAB 4Q3 : The xcpu time being decremented on each clock interrupt that a process also found itself
-	// to be the current process.
+	hpet->gis |= HPET_GIS_T0;
+
 	struct procent *prptr = &proctab[currpid];
 	if (prptr->xcpufunc!= NULL) {
 			prptr->xcputime--;
-			//kprintf(" XCPU pid %d, xcputime %d", currpid, prptr->xcputime);
+			kprintf(" XCPU pid %d, xcputime %d", currpid, prptr->xcputime);
 			if (prptr->xcputime == 0) {
 				void (*xcpuFunction) () = prptr->xcpufunc;
 				prptr->xcputime = 0;
@@ -33,6 +33,7 @@ void	clkhandler(int32	arg	/* Interrupt handler argument	*/)
 	// wrap-around clktimemsec if it has reached its maximum;
 	if(clktimemsec == MAX_UINT32)
 		clktimemsec = 0;
+
 	/* Decrement the ms counter, and see if a second has passed */
 
 	if((--count1000) <= 0) {
@@ -58,17 +59,6 @@ void	clkhandler(int32	arg	/* Interrupt handler argument	*/)
 		}
 	}
 
-	/* LAB 4Q3: Handle alarmq processes if any exist */
-
-	if(!alarmisempty(alarmq)) {
-
-		/* Decrement the delay for the first process on the	*/
-		/*   sleep queue, and awaken if the count reaches zero	*/
-
-		if((--alarmqueuetab[alarmfirstid(alarmq)].qkey) <= 0) {
-			alarmwakeup();
-		}
-	}
 	/* Decrement the preemption counter, and reschedule when the */
 	/*   remaining time reaches zero			     */
 

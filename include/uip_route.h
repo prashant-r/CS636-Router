@@ -1,6 +1,5 @@
 #ifndef UIP_DS6_ROUTE_H
 #define UIP_DS6_ROUTE_H
-#include <router-conf.h>
 
 NBR_TABLE_DECLARE(nbr_routes);
 

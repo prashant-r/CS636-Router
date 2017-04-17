@@ -8,57 +8,39 @@ static int sungetch(int, char **);
 extern int _doscan(register char *, register int **,
                    int (*getc) (int, char **),
                    int (*ungetc) (int, char **), int, int);
-extern char * strtok(s, delim);
-
-char * strtok(s, delim)
-    register char *s;
-    register const char *delim;
+extern int strcspn(char *string, char *chars);
+int strcspn(char *string, char *chars)
 {
-    register char *spanp;
-    register int c, sc;
-    char *tok;
-    static char *last;
+    register char c, *p, *s;
 
-
-    if (s == NULL && (s = last) == NULL)
-        return (NULL);
-
-    /*
-     * Skip (span) leading delimiters (s += strspn(s, delim), sort of).
-     */
-cont:
-    c = *s++;
-    for (spanp = (char *)delim; (sc = *spanp++) != 0;) {
-        if (c == sc)
-            goto cont;
+    for (s = string, c = *s; c != 0; s++, c = *s) {
+    for (p = chars; *p != 0; p++) {
+        if (c == *p) {
+        return s-string;
+        }
     }
-
-    if (c == 0) {       /* no non-delimiter characters */
-        last = NULL;
-        return (NULL);
     }
-    tok = s - 1;
-
-    /*
-     * Scan token (scan for delimiters: s += strcspn(s, delim), sort of).
-     * Note that delim must have one NUL; we stop if we see that, too.
-     */
-    for (;;) {
-        c = *s++;
-        spanp = (char *)delim;
-        do {
-            if ((sc = *spanp++) == c) {
-                if (c == 0)
-                    s = NULL;
-                else
-                    s[-1] = 0;
-                last = s;
-                return (tok);
-            }
-        } while (sc != 0);
-    }
-    /* NOTREACHED */
+    return s-string;
 }
+
+char * strtok(char *s , const char *delim)
+{
+    static char *lasts;
+    register int ch;
+
+    if (s == 0)
+    s = lasts;
+    do {
+    if ((ch = *s++) == '\0')
+        return 0;
+    } while (strchr(delim, ch));
+    --s;
+    lasts = s + strcspn(s, delim);
+    if (*lasts != 0)
+    *lasts++ = 0;
+    return s;
+}
+
 
 
 /*------------------------------------------------------------------------

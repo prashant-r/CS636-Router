@@ -3,13 +3,11 @@
 uint8_t uip_ext_bitmap = 0;
 void ipv6_in(unsigned char * packet)
 {
+  printf("Got a packet");
   uip_buf = (unsigned char *) (packet);
   uip_next_hdr = &UIP_IP_BUF->nexthdr;
-  printf("Obtained ipv6 packet\n");
   ip_ntoh();
-
   ip_debug_print();
-
   uip_len = UIP_IP_BUF->len + UIP_IPH_LEN;
   uip_ext_len = 0;
   if (UIP_IP_BUF->v != 6) {
@@ -67,8 +65,6 @@ void ipv6_in(unsigned char * packet)
     }
   #endif /* UIP_IPV6_MULTICAST */
 
-    printf("Is this my address ? %d \n", uip_ds6_is_my_addr(&UIP_IP_BUF->destipaddr));
-    printf("Is this my mcast routable address %d \n", uip_ds6_is_my_maddr(&UIP_IP_BUF->destipaddr));
     PRINT6ADDR(&UIP_IP_BUF->destipaddr);
     /* TBD Some Parameter problem messages */
     if(!uip_ds6_is_my_addr(&UIP_IP_BUF->destipaddr) &&
@@ -139,10 +135,15 @@ void ipv6_in(unsigned char * packet)
     case UIP_PROTO_ICMP6:
       /* ICMPv6 */
       icmp6_input(packet);
+      if(uip_len > 0)
+        goto send;
+      else
+        goto discard;
       break;
 
     case UIP_PROTO_FRAG:
       PRINTF("Processing frag header\n");
+      goto discard;
       break;
 
     default:
@@ -156,6 +157,7 @@ void ipv6_in(unsigned char * packet)
 
   }
   send:
+  ip_hton();
   PRINTF("Sending packet with length %d (%d)\n", uip_len,
       (UIP_IP_BUF->len));
   PRINTF("Here is the packet \n");
@@ -170,7 +172,7 @@ void ipv6_in(unsigned char * packet)
   uip_clear_buf();
   uip_ext_bitmap = 0;
   //uip_flags = 0;
-  ip_hton();
+  
   return;
 
 }

@@ -1,5 +1,6 @@
 /* xinu.h - include all system header files */
 #include <router-conf.h>
+#include <ctype.h>
 #include <kernel.h>
 #include <conf.h>
 #include <process.h>

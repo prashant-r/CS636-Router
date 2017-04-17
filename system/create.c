@@ -12,7 +12,7 @@ local	int newpid();
  */
 pid32	create(
 	  void		*funcaddr,	/* Address of the function	*/
-	  uint32	ssize,		/* Stack size in words		*/
+	  uint32	ssize,		/* Stack size in bytes		*/
 	  pri16		priority,	/* Process priority > 0		*/
 	  char		*name,		/* Name (for debugging)		*/
 	  uint32	nargs,		/* Number of args that follow	*/
@@ -30,10 +30,9 @@ pid32	create(
 	mask = disable();
 	if (ssize < MINSTK)
 		ssize = MINSTK;
-	ssize = (uint32) roundew(ssize);
-	if (((saddr = (uint32 *)getstk(ssize)) ==
-	    (uint32 *)SYSERR ) ||
-	    (pid=newpid()) == SYSERR || priority < 1 ) {
+	ssize = (uint32) roundmb(ssize);
+	if ( (priority < 1) || ((pid=newpid()) == SYSERR) ||
+	     ((saddr = (uint32 *)getstk(ssize)) == (uint32 *)SYSERR) ) {
 		restore(mask);
 		return SYSERR;
 	}
@@ -43,32 +42,15 @@ pid32	create(
 
 	/* Initialize process table entry for new process */
 	prptr->prstate = PR_SUSP;	/* Initial state is suspended	*/
-
-	if(strcmp(name, "prnull") == 0)
-	{
-		// its the null process
-		prptr->prprio = 0;
-	}
-	else
-		prptr->prprio = 10;
+	prptr->prprio = priority;
 	prptr->prstkbase = (char *)saddr;
 	prptr->prstklen = ssize;
 	prptr->prname[PNMLEN-1] = NULLCH;
-	prptr->prcpumsec =1;
-	prptr->sndflag = FALSE;
-	prptr->senderq = mynewqueue();
 	for (i=0 ; i<PNMLEN-1 && (prptr->prname[i]=name[i])!=NULLCH; i++)
 		;
 	prptr->prsem = -1;
 	prptr->prparent = (pid32)getpid();
 	prptr->prhasmsg = FALSE;
-	// LAB 4Q3 Initalize the following
-	prptr->callback = NULL;
-	prptr->alarmfunc = NULL;
-	prptr->alarmtime = 0;
-	prptr->alarmTimeOut = FALSE;
-	prptr->xcpufunc = NULL;
-	prptr->xcputime = 0;
 
 	/* Set up stdin, stdout, and stderr descriptors for the shell	*/
 	prptr->prdesc[0] = CONSOLE;
@@ -84,12 +66,12 @@ pid32	create(
 	a = (uint32 *)(&nargs + 1);	/* Start of args		*/
 	a += nargs -1;			/* Last argument		*/
 	for ( ; nargs > 0 ; nargs--)	/* Machine dependent; copy args	*/
-		*--saddr = *a--;	/*   onto created process' stack*/
+		*--saddr = *a--;	/* onto created process's stack	*/
 	*--saddr = (long)INITRET;	/* Push on return address	*/
 
 	/* The following entries on the stack must match what ctxsw	*/
 	/*   expects a saved process state to contain: ret address,	*/
-	/*   ebp, interrupt mask, flags, registerss, and an old SP	*/
+	/*   ebp, interrupt mask, flags, registers, and an old SP	*/
 
 	*--saddr = (long)funcaddr;	/* Make the stack look like it's*/
 					/*   half-way through a call to	*/
@@ -116,6 +98,7 @@ pid32	create(
 	restore(mask);
 	return pid;
 }
+
 
 /*------------------------------------------------------------------------
  *  newpid  -  Obtain a new (free) process ID

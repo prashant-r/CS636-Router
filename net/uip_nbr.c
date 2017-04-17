@@ -228,6 +228,7 @@ void
 uip_ds6_neighbor_periodic(void)
 {
   uip_ds6_nbr_t *nbr = nbr_table_head(ds6_neighbors);
+  PRINTF("Periodic processing on neighbors \n");
   while(nbr != NULL) {
     switch(nbr->state) {
     case NBR_REACHABLE:

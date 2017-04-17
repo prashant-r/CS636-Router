@@ -6,7 +6,7 @@
  *  alarmwakeup  -  Called by clock interrupt handler to awaken processes to call alarm handler
  *------------------------------------------------------------------------
  */
-void	alarmwakeup(void)
+void alarmwakeup(void)
 {
 	/* LAB 4Q3 Awaken all processes that have no more time to sleep */
 	resched_cntl(DEFER_START);

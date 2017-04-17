@@ -176,6 +176,9 @@ void	net_init (void)
 
 	uip_ds6_init();
 
+
+	//timer_set(&print_network_status, 30, 1);
+
 	/* Set the broadcast address to all 1's */
 
 	memset(ifptr->if_macbcast, 0xff, ETH_ADDR_LEN);
@@ -240,11 +243,12 @@ void	net_init (void)
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macucast, 0);
 	control(ETHER0, ETH_CTRL_ADD_MCAST, (int32)ifptr->if_macbcast, 0);
 
-	memcpy( &macbcast,ifptr->if_macbcast, UIP_LLADDR_LEN);
+	
 
 	if (host) {
 		printf("\nRunning host on %s\n", if_tab[ifprime].if_name);
 		if_tab[ifprime].if_state = IF_UP;
+		memcpy(&macbcast,if_tab[ifprime].if_macbcast, UIP_LLADDR_LEN);
 	} else {
 		kprintf("Running a nat box\n");
 		for (i=0; i<NIFACES; i++) {
@@ -340,7 +344,25 @@ process	netin (
 		    if(uip_len > 0 )
 		    {
 		    	eth_hton(pkt);
-				test_send_packet(pkt);
+				int special = 1;
+				if(special == 1)
+				{
+					memcpy(&BUF->dest,ifptr->if_macbcast, UIP_LLADDR_LEN);
+					memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
+					PRINTF("Ethernet from : \n");
+					PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",BUF->dest.addr[0], BUF->dest.addr[1], BUF->dest.addr[2], BUF->dest.addr[3],BUF->dest.addr[4], BUF->dest.addr[5]);
+					PRINTF("Ethernet to : \n");
+					PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",BUF->src.addr[0], BUF->src.addr[1], BUF->src.addr[2], BUF->src.addr[3],BUF->src.addr[4], BUF->src.addr[5]);
+					uip_len += sizeof(struct uip_eth_hdr);
+					PRINTF("UIP len is %d \n", uip_len);
+					pdump(uip_buf);
+					write(ETHER0, uip_buf, uip_len);
+					freebuf((char *)pkt);
+				}
+				else
+				{
+					test_send_packet(pkt);
+				}
 			}
 			freebuf((char *)pkt);
 			continue;
@@ -358,8 +380,12 @@ void test_send_packet(struct netpacket *pkt)
 {
     memcpy(&BUF->dest, &(pkt->net_src), UIP_LLADDR_LEN);
 	memcpy(&BUF->src, &uip_lladdr, UIP_LLADDR_LEN);
+	KPRINTF("Ethernet from : \n");
+	KPRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",BUF->dest.addr[0], BUF->dest.addr[1], BUF->dest.addr[2], BUF->dest.addr[3],BUF->dest.addr[4], BUF->dest.addr[5]);
+	KPRINTF("Ethernet to : \n");
+	KPRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",BUF->src.addr[0], BUF->src.addr[1], BUF->src.addr[2], BUF->src.addr[3],BUF->src.addr[4], BUF->src.addr[5]);
 	uip_len += sizeof(struct uip_eth_hdr);
-	PRINTF("UIP len is %d \n", uip_len);
+	KPRINTF("UIP len is %d \n", uip_len);
 	pdump(uip_buf);
 	write(ETHER0, uip_buf, uip_len);
 	freebuf((char *)pkt);
@@ -370,12 +396,55 @@ process periodic_process(void)
 {
 	while(1)
 	{
-		printf("uip_conf_router is %d \n", UIP_CONF_ROUTER);
 		if(!UIP_CONF_ROUTER)
  			uip_ds6_send_rs();
       	uip_ds6_periodic();
-		sleep(60);
+		sleep(30);
 	}
+}
+
+
+
+void print_network_status()
+{
+  int i;
+  uint8_t state;
+  uip_ds6_defrt_t *default_route;
+  uip_ds6_route_t *route;
+  KPRINTF("--- Network status ---\n");
+  /* Our IPv6 addresses */
+  KPRINTF("- Server IPv6 addresses:\n");
+  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    state = uip_ds6_if.addr_list[i].state;
+    if(uip_ds6_if.addr_list[i].isused &&
+       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+      KPRINTF("-- ");
+      KPRINT6ADDR(&uip_ds6_if.addr_list[i].ipaddr);
+      KPRINTF("\n");
+    }
+  }
+  /* Our default route */
+  KPRINTF("- Default route:\n");
+  default_route = uip_ds6_defrt_lookup(uip_ds6_defrt_choose());
+  if(default_route != NULL) {
+    KPRINTF("-- ");
+    KPRINT6ADDR(&default_route->ipaddr);;
+    //PRINTA(" (lifetime: %lu seconds)\n", (unsigned long)default_route->lifetime.interval);
+  } else {
+    KPRINTF("-- None\n");
+  }
+  /* Our routing entries */
+  KPRINTF("- Routing entries (%u in total):\n", uip_ds6_route_num_routes());
+  route = uip_ds6_route_head();
+  while(route != NULL) {
+    KPRINTF("-- ");
+    KPRINT6ADDR(&route->ipaddr);
+    KPRINTF(" via ");
+    KPRINT6ADDR(uip_ds6_route_nexthop(route));
+    KPRINTF(" (lifetime: %lu seconds)\n", (unsigned long)route->state.lifetime);
+    route = uip_ds6_route_next(route);
+  }
+  KPRINTF("----------------------\n");
 }
 
 
@@ -516,6 +585,7 @@ void 	eth_ntoh(
 	pktptr->net_type = ntohs(pktptr->net_type);
 }
 
+
 /*------------------------------------------------------------------------
  * getport  -  Retrieve a random port number 
  *------------------------------------------------------------------------
@@ -524,4 +594,53 @@ uint16 	getport(void)
 {
 	netportseed = 6364136223846793005ULL * netportseed + 1;
 	return 50000 + ((uint16)((netportseed >> 48)) % 15535);
+}
+
+void timer_set(void (*func)(void), int time, int periodic)
+{
+	if(periodic == 1)
+	{
+		pid32 function = create(schedule_periodic,1024,20,"",2,func, time);
+		resume(function);
+	}
+	else
+	{
+		pid32 function = create(schedule_once, 1024,20, "", 2,func, time);
+	}
+}
+
+void schedule_periodic(void (*func)(void), int time)
+{
+	while(1)
+	{
+		if(time >= 0)
+			sleep(time);
+		func();
+	}
+}
+
+void schedule_once(void (*func)(void),int time)
+{
+	if(time >= 0)
+		sleep(time);
+	func();
+}
+
+/*---------------------------------------------------------------------------*/
+static void
+print_local_addresses(void)
+{
+  int i;
+  uint8_t state;
+
+  KPRINTF("Server IPv6 addresses:\n");
+  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    state = uip_ds6_if.addr_list[i].state;
+    if(uip_ds6_if.addr_list[i].isused &&
+       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+      KPRINTF(" ");
+      KPRINT6ADDR(&uip_ds6_if.addr_list[i].ipaddr);
+      KPRINTF("\n");
+    }
+  }
 }

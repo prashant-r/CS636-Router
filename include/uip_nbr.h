@@ -1,8 +1,6 @@
 #ifndef UIP_DS6_NEIGHBOR_H_
 #define UIP_DS6_NEIGHBOR_H_
 
-#include <router-conf.h>
-
 #if UIP_CONF_IPV6_QUEUE_PKT
 #include "net/ip/uip-packetqueue.h"
 #endif                   

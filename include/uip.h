@@ -10,11 +10,16 @@ typedef int int32_t;
 #define PRINTF(...) printf(__VA_ARGS__)
 #define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((uint8_t *)addr)[0], ((uint8_t *)addr)[1], ((uint8_t *)addr)[2], ((uint8_t *)addr)[3], ((uint8_t *)addr)[4], ((uint8_t *)addr)[5], ((uint8_t *)addr)[6], ((uint8_t *)addr)[7], ((uint8_t *)addr)[8], ((uint8_t *)addr)[9], ((uint8_t *)addr)[10], ((uint8_t *)addr)[11], ((uint8_t *)addr)[12], ((uint8_t *)addr)[13], ((uint8_t *)addr)[14], ((uint8_t *)addr)[15])
 #define PRINTLLADDR(lladdr) PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",lladdr->addr[0], lladdr->addr[1], lladdr->addr[2], lladdr->addr[3],lladdr->addr[4], lladdr->addr[5])
-#define PRINTLLADDRDOT(lladdr) PRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",lladdr.addr[0], lladdr.addr[1], lladdr.addr[2], lladdr.addr[3],lladdr.addr[4], lladdr.addr[5])
 #else
 #define PRINTF(...)
 #define PRINT6ADDR(addr)
+#define PRINTLLADDR(lladdr)
 #endif
+
+#define KPRINTF(...) kprintf(__VA_ARGS__)
+#define KPRINT6ADDR(addr) KPRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((uint8_t *)addr)[0], ((uint8_t *)addr)[1], ((uint8_t *)addr)[2], ((uint8_t *)addr)[3], ((uint8_t *)addr)[4], ((uint8_t *)addr)[5], ((uint8_t *)addr)[6], ((uint8_t *)addr)[7], ((uint8_t *)addr)[8], ((uint8_t *)addr)[9], ((uint8_t *)addr)[10], ((uint8_t *)addr)[11], ((uint8_t *)addr)[12], ((uint8_t *)addr)[13], ((uint8_t *)addr)[14], ((uint8_t *)addr)[15])
+#define KPRINTLLADDR(lladdr) KPRINTF(" %02x:%02x:%02x:%02x:%02x:%02x ",lladdr->addr[0], lladdr->addr[1], lladdr->addr[2], lladdr->addr[3],lladdr->addr[4], lladdr->addr[5])
+
 #define U16_F "d"
 #define S16_F "d"
 #define X16_F "x"
@@ -428,6 +433,14 @@ void echo_reply();
 #define UIP_DEFAULT_PREFIX_LEN 64
 #define uip_create_unspecified(a) uip_ip6addr(a, 0, 0, 0, 0, 0, 0, 0, 0)
 #define uip_ipaddr_prefixcmp(addr1, addr2, length) (memcmp(addr1, addr2, length>>3) == 0)
+  
+#define uip_create_global_prefix(addr) do { \
+    (addr)->u16[0] = UIP_HTONS(0x2001);       \
+    (addr)->u16[1] = UIP_HTONS(0x18e8);     \
+    (addr)->u16[2] = UIP_HTONS(0x0808);     \
+    (addr)->u16[3] = 0;                     \
+  } while(0)
+
 #define uip_create_linklocal_prefix(addr) do { \
     (addr)->u16[0] = UIP_HTONS(0xfe80);            \
     (addr)->u16[1] = 0;                        \
@@ -602,15 +615,8 @@ void ip_debug_print(void);
 
 #ifndef UIP_CONF_ND6_DEF_MAXDADNS
 /** \brief Do not try DAD when using EUI-64 as allowed by draft-ietf-6lowpan-nd-15 section 8.2 */
-#if UIP_CONF_LL_802154
 #define UIP_ND6_DEF_MAXDADNS 0
-#else /* UIP_CONF_LL_802154 */
-#define UIP_ND6_DEF_MAXDADNS UIP_ND6_SEND_NS
 #endif /* UIP_CONF_LL_802154 */
-#else /* UIP_CONF_ND6_DEF_MAXDADNS */
-#define UIP_ND6_DEF_MAXDADNS UIP_CONF_ND6_DEF_MAXDADNS
-#endif /* UIP_CONF_ND6_DEF_MAXDADNS */
-
 /** \name RFC 4861 Node constant */
 #define UIP_ND6_MAX_MULTICAST_SOLICIT  3
 
@@ -826,17 +832,6 @@ void uip_nd6_rs_output(void);
 //#define UIP_ND6_MAX_RA_DELAY_TIME           0.5 /*seconds*/
 #define UIP_ND6_MAX_RA_DELAY_TIME_MS        500 /*milli seconds*/
 /** @} */
-
-#ifndef UIP_CONF_ND6_DEF_MAXDADNS
-/** \brief Do not try DAD when using EUI-64 as allowed by draft-ietf-6lowpan-nd-15 section 8.2 */
-#if UIP_CONF_LL_802154
-#define UIP_ND6_DEF_MAXDADNS 0
-#else /* UIP_CONF_LL_802154 */
-#define UIP_ND6_DEF_MAXDADNS UIP_ND6_SEND_NS
-#endif /* UIP_CONF_LL_802154 */
-#else /* UIP_CONF_ND6_DEF_MAXDADNS */
-#define UIP_ND6_DEF_MAXDADNS UIP_CONF_ND6_DEF_MAXDADNS
-#endif /* UIP_CONF_ND6_DEF_MAXDADNS */
 
 /** \name RFC 4861 Node constant */
 #define UIP_ND6_MAX_MULTICAST_SOLICIT  3

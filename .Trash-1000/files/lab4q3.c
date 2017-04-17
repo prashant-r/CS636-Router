@@ -17,35 +17,16 @@ bool8 useSigRecv;
 void lab4q3_AllTests(){
 	kprintf("\n // SIGRECV TESTS //\n");
 
-	// // LAB 4Q3: V. IMP line, we are setting the useSigRecv to true here
-	// // so we can test the MYSIGRECV signal functionality
-	// useSigRecv = TRUE;
-	// kprintf("\n // ALARM TEST 1 //\n");
-	// pid32 alarmTest1 = create(AlarmTest1,1024,20,"AlarmTest1",0);
-	// resume(alarmTest1);
-	// sleepms(2000);
-	// kprintf("\n // ALARM TEST 2 //\n");
-	// pid32 alarmTest2 = create(AlarmTest2,1024,20,"AlarmTest2",0);
-	// resume(alarmTest2);
-	// sleepms(2000);
-	// kprintf("\n // XCPUTEST 1 //\n");
-	// pid32 xcpuTest1 = create(XCputest1,1024,20,"XCputest1",0);
-	// resume(xcpuTest1);
-	// sleepms(1000);
-	// kprintf("\n // XCPUTEST 2 //\n");
-	// pid32 xcpuTest2 = create(XCputest2,1024,20,"XCputest2",0);
-	// resume(xcpuTest2);
-	// sleepms(1000);
-}
-
-
-/*------------------------------------------------------------------------
- *  myalarmhandler -  LAB 4Q3 handler for the alarm signal
- *------------------------------------------------------------------------
-*/
-void myalarmhandler()
-{
-	kprintf(" Alarm handler called on process %d at time: %d\n", currpid, clktimemsec);
+	// LAB 4Q3: V. IMP line, we are setting the useSigRecv to true here
+	// so we can test the MYSIGRECV signal functionality
+	useSigRecv = TRUE;
+	kprintf("\n // XCPUTEST 1 //\n");
+	pid32 xcpuTest1 = create(XCputest1,1024,20,"XCputest1",0);
+	kprintf("\n // XCPUTEST 2 //\n");
+	pid32 xcpuTest2 = create(XCputest2,1024,20,"XCputest2",0);
+	resume(xcpuTest1);
+	resume(xcpuTest2);
+	sleepms(1000);
 }
 
 /*------------------------------------------------------------------------
@@ -75,21 +56,6 @@ void myxcpuhandler_alternate()
 int registerSignal(uint16 asig, int16 time)
 {
 	switch(asig) {
-		   case MYSIGALRM :{
-			   if(time == NULL){
-			   if (registercbsig(MYSIGALRM, &myalarmhandler, 0) != OK) {
-			   			kprintf("alarm handler registration failed\n");
-			   	    	return 1;
-			   		}
-			   }
-			   else
-			   {
-				   if (registercbsig(MYSIGALRM, &myalarmhandler, time) != OK) {
-				   			   			kprintf("alarm handler registration failed\n");
-				   			   	    	return 1;
-				   			   		}
-			   }
-		       break; /* optional */}
 		   case MYSIGXCPU:{
 			   if (registercbsig(MYSIGXCPU, &myxcpuhandler, time) != OK) {
 			   			kprintf("xcpu handler registration failed\n");
@@ -105,38 +71,6 @@ int registerSignal(uint16 asig, int16 time)
 
 }
 
-/*------------------------------------------------------------------------
- *  AlarmTest1 -  LAB 4Q3 tests if the alarm works after, visual verification needed in logs ~ 1000ms
- *------------------------------------------------------------------------
-*/
-void AlarmTest1()
-{
-	registerSignal(MYSIGALRM, NULL);
-	alarmms(1000);
-	while(TRUE)
-	{
-		sleepms(20);
-	}
-
-}
-
-/*------------------------------------------------------------------------
- *  AlarmTest2 -  LAB 4Q3 for an already set alarm need to overwrite the alarm want to make
- *  			 sure only the overwritten alarm delay is considered when kernel is
- *  			 going to execute the callback function.
- *------------------------------------------------------------------------
-*/
-void AlarmTest2()
-{
-	registerSignal(MYSIGALRM, NULL);
-	alarmms(200);
-	alarmms(100);
-	while(TRUE)
-	{
-		sleepms(20);
-	}
-
-}
 /*------------------------------------------------------------------------
  *  XCputest1 -  LAB 4Q3 Simple XCputest to test it works, can only verify visually.
  *  			Would recommend subtracting time displayed when call back
@@ -161,26 +95,12 @@ void XCputest1()
 */
 void XCputest2()
 {
+	kprintf("Executing XCputest2 \n");
 	registerSignal(MYSIGXCPU, 300);
 	if (registercbsig(MYSIGXCPU, &myxcpuhandler_alternate, 120) != OK) {
 			kprintf("xcpu handler alternate registration failed\n");
 			return;
 	}
-	while(TRUE)
-	{
-
-	}
-}
-
-/*------------------------------------------------------------------------
- *  mixedProcess -  LAB 4Q3 Process registers all the different signals
- *------------------------------------------------------------------------
-*/
-void mixedProcess(int xcpu, int alarm)
-{
-	registerSignal(MYSIGXCPU, xcpu);
-	registerSignal(MYSIGALRM, NULL);
-	alarmms(alarm);
 	while(TRUE)
 	{
 
