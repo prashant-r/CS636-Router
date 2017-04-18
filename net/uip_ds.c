@@ -95,7 +95,7 @@ uip_ds6_init(void)
   uip_create_global_prefix(&global_ipaddr);
 #if UIP_CONF_ROUTER
   uip_ds6_prefix_add(&loc_fipaddr, UIP_DEFAULT_PREFIX_LEN, 0, 0, 0, 0);
-  uip_ds6_prefix_add(&global_ipaddr, UIP_DEFAULT_PREFIX_LEN, 0, 1, 0, 0);
+  uip_ds6_prefix_add(&global_ipaddr, UIP_DEFAULT_PREFIX_LEN, 1, UIP_ND6_RA_FLAG_AUTONOMOUS | UIP_ND6_RA_FLAG_ONLINK, UIP_ND6_INFINITE_LIFETIME, UIP_ND6_INFINITE_LIFETIME);
   uip_ds6_set_addr_iid(&global_ipaddr, &uip_lladdr);
   uip_ds6_addr_add(&global_ipaddr, 0, ADDR_AUTOCONF);
 #else /* UIP_CONF_ROUTER */

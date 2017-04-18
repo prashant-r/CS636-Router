@@ -870,12 +870,18 @@ ra_input(void)
       if((ntohl(nd6_opt_prefix_info->validlt) >=
           ntohl(nd6_opt_prefix_info->preferredlt))
          && (!uip_is_addr_linklocal(&nd6_opt_prefix_info->prefix))) {
+
+        PRINTF("Came to the place during prefix");
+        PRINTF("Reserved ta ki ? %d ", nd6_opt_prefix_info->flagsreserved1);
+        PRINTF("Look %d \n", nd6_opt_prefix_info->flagsreserved1 & UIP_ND6_RA_FLAG_ONLINK);
         /* on-link flag related processing */
         if(nd6_opt_prefix_info->flagsreserved1 & UIP_ND6_RA_FLAG_ONLINK) {
+          PRINTF("Asechei");
           prefix =
             uip_ds6_prefix_lookup(&nd6_opt_prefix_info->prefix,
                                   nd6_opt_prefix_info->preflen);
           if(prefix == NULL) {
+            PRINTF("Kidhar");
             if(nd6_opt_prefix_info->validlt != 0) {
               if(nd6_opt_prefix_info->validlt != UIP_ND6_INFINITE_LIFETIME) {
                 prefix = uip_ds6_prefix_add(&nd6_opt_prefix_info->prefix,
@@ -888,11 +894,14 @@ ra_input(void)
               }
             }
           } else {
+
+            PRINTF("BANDA");
             switch (nd6_opt_prefix_info->validlt) {
             case 0:
               uip_ds6_prefix_rm(prefix);
               break;
             case UIP_ND6_INFINITE_LIFETIME:
+              PRINTF("PAGLA");
               prefix->isinfinite = 1;
               break;
             default:
@@ -908,9 +917,13 @@ ra_input(void)
         }
         /* End of on-link flag related processing */
         /* autonomous flag related processing */
+        PRINTF("kothaii");
+        PRINTF("Look at this %d \n", (nd6_opt_prefix_info->flagsreserved1 & UIP_ND6_RA_FLAG_AUTONOMOUS));
         if((nd6_opt_prefix_info->flagsreserved1 & UIP_ND6_RA_FLAG_AUTONOMOUS)
            && (nd6_opt_prefix_info->validlt != 0)
            && (nd6_opt_prefix_info->preflen == UIP_DEFAULT_PREFIX_LEN)) {
+
+          PRINTF("Ekhane");
 
           uip_ipaddr_copy(&ipaddr, &nd6_opt_prefix_info->prefix);
           uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
@@ -918,6 +931,7 @@ ra_input(void)
           if((addr != NULL) && (addr->type == ADDR_AUTOCONF)) {
             if(nd6_opt_prefix_info->validlt != UIP_ND6_INFINITE_LIFETIME) {
               /* The processing below is defined in RFC4862 section 5.5.3 e */
+              PRINTF("kotahc jabo> ? ");
               
               // goes in below if condition
              // || (ntohl(nd6_opt_prefix_info->validlt) >
@@ -941,6 +955,7 @@ ra_input(void)
               addr->isinfinite = 1;
             }
           } else {
+            PRINTF("Ja shaal");
             if(ntohl(nd6_opt_prefix_info->validlt) ==
                UIP_ND6_INFINITE_LIFETIME) {
               uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
@@ -1151,6 +1166,8 @@ uip_nd6_ra_output(uip_ipaddr_t * dest)
   /* Prefix list */
   for(prefix = uip_ds6_prefix_list;
       prefix < uip_ds6_prefix_list + UIP_DS6_PREFIX_NB; prefix++) {
+    PRINTF("prefix is used %d \n", prefix->isused);
+    PRINTF("prefix is advertised %d \n", prefix->advertise);
     if((prefix->isused) && (prefix->advertise)) {
       UIP_ND6_OPT_PREFIX_BUF->type = UIP_ND6_OPT_PREFIX_INFO;
       UIP_ND6_OPT_PREFIX_BUF->len = UIP_ND6_OPT_PREFIX_INFO_LEN / 8;
