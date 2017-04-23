@@ -1,5 +1,7 @@
 /* net.h */
 
+//ping6 -I eth0.136 fe80:0:0:0:3333:ffff:fe00:081d
+
 #define NETSTK		8192 		/* Stack size for network setup */
 #define NETPRIO		500    		/* Network startup priority 	*/
 #define NETBOOTFILE	128		/* Size of the netboot filename	*/

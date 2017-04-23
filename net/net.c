@@ -45,8 +45,8 @@ void	net_init (void)
 	struct	ifentry	*ifptr;		/* Ptr to interface table entry	*/
 	bool8	found;			/* Controls user input loop	*/
 	char	buffer[40];		/* Buffer to hold input		*/
-	int32	bingid;				uip_ds6_init();
-/* User's Bing ID		*/
+	int32	bingid;				
+	/* User's Bing ID		*/
 	int32	nchars;			/* Number of characters read	*/
 	char	ch;			/* One character of input	*/
 	int32	uid;			/* Unique ID for this node	*/
@@ -399,7 +399,7 @@ process periodic_process(void)
 		if(!UIP_CONF_ROUTER)
  			uip_ds6_send_rs();
       	uip_ds6_periodic();
-		sleep(30);
+		sleep(65);
 	}
 }
 
@@ -409,8 +409,8 @@ void print_network_status()
 {
   int i;
   uint8_t state;
-  uip_ds6_defrt_t *default_route;
-  uip_ds6_route_t *route;
+  // uip_ds6_defrt_t *default_route;
+  // uip_ds6_route_t *route;
   KPRINTF("--- Network status ---\n");
   /* Our IPv6 addresses */
   KPRINTF("- Server IPv6 addresses:\n");
@@ -423,28 +423,28 @@ void print_network_status()
       KPRINTF("\n");
     }
   }
-  /* Our default route */
-  KPRINTF("- Default route:\n");
-  default_route = uip_ds6_defrt_lookup(uip_ds6_defrt_choose());
-  if(default_route != NULL) {
-    KPRINTF("-- ");
-    KPRINT6ADDR(&default_route->ipaddr);;
-    //PRINTA(" (lifetime: %lu seconds)\n", (unsigned long)default_route->lifetime.interval);
-  } else {
-    KPRINTF("-- None\n");
-  }
-  /* Our routing entries */
-  KPRINTF("- Routing entries (%u in total):\n", uip_ds6_route_num_routes());
-  route = uip_ds6_route_head();
-  while(route != NULL) {
-    KPRINTF("-- ");
-    KPRINT6ADDR(&route->ipaddr);
-    KPRINTF(" via ");
-    KPRINT6ADDR(uip_ds6_route_nexthop(route));
-    KPRINTF(" (lifetime: %lu seconds)\n", (unsigned long)route->state.lifetime);
-    route = uip_ds6_route_next(route);
-  }
-  KPRINTF("----------------------\n");
+  // /* Our default route */
+  // KPRINTF("- Default route:\n");
+  // default_route = uip_ds6_defrt_lookup(uip_ds6_defrt_choose());
+  // if(default_route != NULL) {
+  //   KPRINTF("-- ");
+  //   KPRINT6ADDR(&default_route->ipaddr);;
+  //   //PRINTA(" (lifetime: %lu seconds)\n", (unsigned long)default_route->lifetime.interval);
+  // } else {
+  //   KPRINTF("-- None\n");
+  // }
+  // /* Our routing entries */
+  // KPRINTF("- Routing entries (%u in total):\n", uip_ds6_route_num_routes());
+  // route = uip_ds6_route_head();
+  // while(route != NULL) {
+  //   KPRINTF("-- ");
+  //   KPRINT6ADDR(&route->ipaddr);
+  //   KPRINTF(" via ");
+  //   KPRINT6ADDR(uip_ds6_route_nexthop(route));
+  //   KPRINTF(" (lifetime: %lu seconds)\n", (unsigned long)route->state.lifetime);
+  //   route = uip_ds6_route_next(route);
+  // }
+  // KPRINTF("----------------------\n");
 }
 
 

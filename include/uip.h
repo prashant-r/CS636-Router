@@ -6,6 +6,8 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef int int32_t;
+
+#define UIP_DS6_ROUTE_NB 4
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #define PRINT6ADDR(addr) PRINTF(" %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x ", ((uint8_t *)addr)[0], ((uint8_t *)addr)[1], ((uint8_t *)addr)[2], ((uint8_t *)addr)[3], ((uint8_t *)addr)[4], ((uint8_t *)addr)[5], ((uint8_t *)addr)[6], ((uint8_t *)addr)[7], ((uint8_t *)addr)[8], ((uint8_t *)addr)[9], ((uint8_t *)addr)[10], ((uint8_t *)addr)[11], ((uint8_t *)addr)[12], ((uint8_t *)addr)[13], ((uint8_t *)addr)[14], ((uint8_t *)addr)[15])
@@ -389,8 +391,9 @@ extern void icmp6_input();
 
 void echo_reply();
 
-
 #define uip_create_linklocal_allnodes_mcast(a) uip_ip6addr(a, 0xff02, 0, 0, 0, 0, 0, 0, 0x0001)
+
+#define uip_create_linklocal_allnodes_multicast(a) uip_ip6addr(a, 0xfe80, 0, 0, 0, 0x3333, 0xFFFF, 0, 0x0001)
 /**
  * \brief is address a multicast address, see RFC 4291
  * a is of type uip_ipaddr_t*
@@ -615,7 +618,7 @@ void ip_debug_print(void);
 
 #ifndef UIP_CONF_ND6_DEF_MAXDADNS
 /** \brief Do not try DAD when using EUI-64 as allowed by draft-ietf-6lowpan-nd-15 section 8.2 */
-#define UIP_ND6_DEF_MAXDADNS 0
+#define UIP_ND6_DEF_MAXDADNS 1
 #endif /* UIP_CONF_LL_802154 */
 /** \name RFC 4861 Node constant */
 #define UIP_ND6_MAX_MULTICAST_SOLICIT  3

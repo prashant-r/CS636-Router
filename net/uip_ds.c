@@ -72,7 +72,7 @@ uip_ds6_init(void)
 {
 
   uip_ds6_neighbors_init();
-  uip_ds6_route_init();
+  // *Here* uip_ds6_route_init();
   PRINTF("Init of IPv6 data structures\n");
   PRINTF("%u neighbors\n%u default routers\n%u prefixes\n%u routes\n%u unicast addresses\n%u multicast addresses\n%u anycast addresses\n",
      NBR_TABLE_MAX_NEIGHBORS, UIP_DS6_DEFRT_NB, UIP_DS6_PREFIX_NB, UIP_DS6_ROUTE_NB,
@@ -105,8 +105,23 @@ uip_ds6_init(void)
   uip_create_linklocal_prefix(&loc_fipaddr);
   uip_ds6_set_addr_iid(&loc_fipaddr, &uip_lladdr);
   uip_ds6_addr_add(&loc_fipaddr, 0, ADDR_AUTOCONF);
-  KPRINTF("Local fip addr \n");
+
+  uip_create_linklocal_allnodes_multicast(&loc_fipaddr);
+  uip_ipaddr_t *ipaddr = &loc_fipaddr;
   KPRINT6ADDR(&loc_fipaddr);
+
+
+  byte mac_address[6];
+  control(ETHER0, ETH_CTRL_GET_MAC, (int32) &mac_address, 0);
+  mac_address[0] = 0x33;
+  mac_address[1] = 0x33;
+  mac_address[2] = 0xFF;
+  uip_ds6_set_addr_iid(&loc_fipaddr, &uip_lladdr);
+  memcpy(ipaddr->u8 + 8, &mac_address, 3);
+  KPRINT6ADDR(&loc_fipaddr);
+  uip_ds6_addr_add(&loc_fipaddr, 0, ADDR_AUTOCONF);
+  uip_create_linklocal_prefix(&loc_fipaddr);
+  uip_ds6_set_addr_iid(&loc_fipaddr, &uip_lladdr);
   uip_create_linklocal_allnodes_mcast(&loc_fipaddr);
   uip_ds6_maddr_add(&loc_fipaddr);
 
@@ -152,7 +167,7 @@ uip_ds6_periodic(void)
 #if UIP_ND6_DEF_MAXDADNS > 0
       } else if((locaddr->state == ADDR_TENTATIVE)
                 && (locaddr->dadnscount <= uip_ds6_if.maxdadns)
-                && (timer_expired(&locaddr->dadtimer))
+                // && //* Here* (timer_expired(&locaddr->dadtimer))
                 && (uip_len == 0)) {
         uip_ds6_dad(locaddr);
 #endif /* UIP_ND6_DEF_MAXDADNS > 0 */
@@ -161,7 +176,7 @@ uip_ds6_periodic(void)
   }
 
   /* Periodic processing on default routers */
-  uip_ds6_defrt_periodic();
+  // *Here* uip_ds6_defrt_periodic();
 
 #if !UIP_CONF_ROUTER
   /* Periodic processing on prefixes */

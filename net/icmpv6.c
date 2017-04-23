@@ -20,7 +20,7 @@ static uip_ds6_addr_t *addr; /**  Pointer to an interface address */
 #endif /* UIP_ND6_SEND_NS || UIP_ND6_SEND_NA || UIP_ND6_SEND_RA || !UIP_CONF_ROUTER */
 
 #if UIP_ND6_SEND_NS || UIP_ND6_SEND_RA || !UIP_CONF_ROUTER
-static uip_ds6_defrt_t *defrt; /**  Pointer to a router list entry */
+// *Here* static uip_ds6_defrt_t *defrt; /**  Pointer to a router list entry */
 #endif /* UIP_ND6_SEND_NS || UIP_ND6_SEND_RA || !UIP_CONF_ROUTER */
 
 #if !UIP_CONF_ROUTER            // TBD see if we move it to ra_input
@@ -343,6 +343,7 @@ ns_input(void)
   /* Options processing */
   nd6_opt_llao = NULL;
   nd6_opt_offset = UIP_ND6_NS_LEN;
+  PRINTF("Eha10");
   while(uip_l3_icmp_hdr_len + nd6_opt_offset < uip_len) {
 #if UIP_CONF_IPV6_CHECKS
     if(UIP_ND6_OPT_HDR_BUF->len == 0) {
@@ -369,12 +370,14 @@ ns_input(void)
         } else {
           const uip_lladdr_t *lladdr = uip_ds6_nbr_get_ll(nbr);
           if(lladdr == NULL) {
+            PRINTF("Eha8");
             goto discard;
           }
           if(memcmp(&nd6_opt_llao[UIP_ND6_OPT_DATA_OFFSET],
               lladdr, UIP_LLADDR_LEN) != 0) {
             if(nbr_table_update_lladdr((const linkaddr_t *)lladdr, (const linkaddr_t *)&lladdr_aligned, 1) == 0) {
               /* failed to update the lladdr */
+              PRINTF("Eha7");
               goto discard;
             }
             nbr->state = NBR_STALE;
@@ -394,15 +397,18 @@ ns_input(void)
     }
     nd6_opt_offset += (UIP_ND6_OPT_HDR_BUF->len << 3);
   }
-
+  PRINTF("Eha21 -- :");
+  PRINT6ADDR(&UIP_ND6_NS_BUF->tgtipaddr);
   addr = uip_ds6_addr_lookup(&UIP_ND6_NS_BUF->tgtipaddr);
   if(addr != NULL) {
     if(uip_is_addr_unspecified(&UIP_IP_BUF->srcipaddr)) {
+      PRINTF("Came to DAD case\n");
       /* DAD CASE */
 #if UIP_ND6_DEF_MAXDADNS > 0
 #if UIP_CONF_IPV6_CHECKS
       if(!uip_is_addr_solicited_node(&UIP_IP_BUF->destipaddr)) {
         PRINTF("NS received is bad\n");
+        PRINTF("Eha6");
         goto discard;
       }
 #endif /* UIP_CONF_IPV6_CHECKS */
@@ -410,13 +416,16 @@ ns_input(void)
         uip_create_linklocal_allnodes_mcast(&UIP_IP_BUF->destipaddr);
         uip_ds6_select_src(&UIP_IP_BUF->srcipaddr, &UIP_IP_BUF->destipaddr);
         flags = UIP_ND6_NA_FLAG_OVERRIDE;
+        PRINTF("Eha5");
         goto create_na;
       } else {
           /** \todo if I sent a NS before him, I win */
         uip_ds6_dad_failed(addr);
+        PRINTF("Eha4");
         goto discard;
       }
 #else /* UIP_ND6_DEF_MAXDADNS > 0 */
+
       goto discard;  /* DAD CASE */
 #endif /* UIP_ND6_DEF_MAXDADNS > 0 */
     }
@@ -438,6 +447,7 @@ ns_input(void)
       uip_ipaddr_copy(&UIP_IP_BUF->destipaddr, &UIP_IP_BUF->srcipaddr);
       uip_ipaddr_copy(&UIP_IP_BUF->srcipaddr, &UIP_ND6_NS_BUF->tgtipaddr);
       flags = UIP_ND6_NA_FLAG_SOLICITED | UIP_ND6_NA_FLAG_OVERRIDE;
+      PRINTF("Eha3");
       goto create_na;
     }
 
@@ -446,14 +456,17 @@ ns_input(void)
       uip_ipaddr_copy(&UIP_IP_BUF->destipaddr, &UIP_IP_BUF->srcipaddr);
       uip_ipaddr_copy(&UIP_IP_BUF->srcipaddr, &UIP_ND6_NS_BUF->tgtipaddr);
       flags = UIP_ND6_NA_FLAG_SOLICITED | UIP_ND6_NA_FLAG_OVERRIDE;
+      PRINTF("Eha1");
       goto create_na;
     } else {
 #if UIP_CONF_IPV6_CHECKS
       PRINTF("NS received is bad\n");
+      PRINTF("Eha2");
       goto discard;
 #endif /* UIP_CONF_IPV6_CHECKS */
     }
   } else {
+    PRINTF("Hasn't been added that's all\n");
     goto discard;
   }
 
@@ -694,8 +707,7 @@ na_input(void)
          */
         if(is_override || !is_llchange || nd6_opt_llao == NULL) {
           if(nd6_opt_llao != NULL && is_llchange) {
-            if(!extract_lladdr_from_llao_aligned(&lladdr_aligned) ||
-               nbr_table_update_lladdr((const linkaddr_t *) lladdr, (const linkaddr_t *) &lladdr_aligned, 1) == 0) {
+            if(!extract_lladdr_from_llao_aligned(&lladdr_aligned) || nbr_table_update_lladdr((const linkaddr_t *) lladdr, (const linkaddr_t *) &lladdr_aligned, 1) == 0) {
               /* failed to update the lladdr */
               goto discard;
             }
@@ -707,10 +719,10 @@ na_input(void)
         }
       }
       if(nbr->isrouter && !is_router) {
-        defrt = uip_ds6_defrt_lookup(&UIP_IP_BUF->srcipaddr);
-        if(defrt != NULL) {
-          uip_ds6_defrt_rm(defrt);
-        }
+// *Here*        defrt = uip_ds6_defrt_lookup(&UIP_IP_BUF->srcipaddr);
+// *Here*        if(defrt != NULL) {
+// *Here*          uip_ds6_defrt_rm(defrt);
+//        }
       }
       nbr->isrouter = is_router;
     }
